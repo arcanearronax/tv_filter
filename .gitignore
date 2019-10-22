@@ -1,0 +1,3 @@
+tvapi/logs/*
+tvapi/tvapi/__pycache__/*
+tvapi/tvapi/*.sock

@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block page_title %}
+	<h3>{{ show_name }}</h3>
+	{% if seasons %}
+		<h5>Seasons: {{ seasons }}</h5>
+	{% else %}
+
+		<h5>Season: {{ season }}</h5>
+
+		{% if episodes %}
+			<h5>Episodes: {{ episodes }}</h5>
+		{% else %}
+			<h5>Episode: {{ episode }}</h5>
+		{% endif %}
+
+	{% endif %}
+
+	{% if match %}
+		<p>MATCH FOUND</p>
+	{% else %}
+		<p>NO MATCH</p>
+	{% endif %}
+	
+{% endblock %}
+
+{% block temp_form %}
+	<form method="POST">
+		{% csrf_token %}
+		<table>
+			{% for field in form %}
+				<tr>
+					<td>{{ field.label_tag }} {{ field }}</td>
+				</tr>
+			{% empty %}
+				<p>none</p>
+			{% endfor %}
+		</table>
+		<input type="submit" value="Submit Button" name="BaseForm" id="SubmitButton">
+	</form>
+{% endblock %}
+

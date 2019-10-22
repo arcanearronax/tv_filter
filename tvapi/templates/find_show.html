@@ -1,0 +1,20 @@
+{% load static %}
+<!DOCTYPE html>
+
+<html>
+	<h3>Enter the show name:</h3>
+	
+	<form method="POST">
+		{% csrf_token %}
+		<table>
+			{% for field in form %}
+				<tr>
+					<td>{{ field.label_tag }} {{ field }}</td>
+				</tr>
+			{% empty %}
+				<p>none</p>
+			{% endfor %}
+		</table>
+		<input type="submit" value="Submit Button" name="BaseForm" id="SubmitButton">
+	</form>
+</html>
