@@ -52,10 +52,13 @@ class APIView(View):
 			#context['show_name'] = APIView.show_name
 
 		elif show_id: 
-			template = loader.get_template('query.html')
-			context.update(self.__class__.client.find_show_by_id(show_id))
-			context.update(self.__class__.client.find_seasons(show_id))
-			logger.info('TESTER - {}'.format(context['show_name']))
+			context.update({
+				'show_name': self.__class__.client.get_show_name(show_id),
+				'seasons': str(self.__class__.client.find_seasons(show_id)),
+			})
+			logger.info('Exception: {}'.format(e))
+			self.__class__.client.get_show_imdb_id(show_id)
+
 
 		else:
 			template = loader.get_template('find_show.html')

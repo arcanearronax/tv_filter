@@ -59,7 +59,7 @@ class Episode(dict):
         str_imdb_name = str(imdb_name)
 
         self.update({
-            'ep_num': str(ep_num)
+            'ep_num': str(ep_num),
             'tmdb_ep_id': str_tmdb_id,
             'imdb_id': str_imdb_id,
             'tmdb_name': str_tmdb_name,
@@ -141,12 +141,13 @@ class Shows(dict):
         str_season_num = str(season_num)
 
         try:
-            self[str_show_id]['seasons'][str_season_num]
+            self[show_id]['seasons'][season_num]
         except KeyError:
-            self[str_show_id]['seasons'] = None
-            self[str_show_id]['seasons'].update({str_season_num: season})
+            #self[str_show_id]['seasons'] = None
+            season = Season()
+            self[show_id]['seasons'].update({str_season_num: season})
 
-        self[str_show_id]['seasons'][str_season_num] = season
+        self[show_id]['seasons'][season_num] = season
 
         return season
 

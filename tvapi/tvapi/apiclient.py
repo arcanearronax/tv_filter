@@ -4,7 +4,7 @@ import urllib.parse
 import logging
 from bs4 import BeautifulSoup
 import re
-from structures import *
+from .structures import *
 
 logger = logging.getLogger('apilog')
 
@@ -14,7 +14,7 @@ language = 'en-US'
 
 class APIClient():
 	# Shared Values
-	shows = Season()
+	shows = Shows()
 
 	# Used to encode url queries
 	def url_encode(value):
@@ -29,7 +29,7 @@ class APIClient():
 			req = requests.get(url)
 			json_data = json.loads(req.text)
 			show_name = json_data['name']
-			cls.show_names['{}'.format(show_id)] = show_name
+			cls.shows['{}'.format(show_id)] = show_name
 
 		return show_name
 
@@ -42,10 +42,9 @@ class APIClient():
 		json_data = json.loads(req.text)
 		tmdb_name = json_data['results'][0]['original_name']
 		tmdb_id = json_data['results'][0]['id']
-		#cls.show_names['{}'.format(tmdb_id)] = tmdb_name
-		cls.shows.set(tmdb_id,tmdb_name)
-		logger.info('tvmb_id: {}'.format(show_id))
-		return show_id
+		cls.shows.set(tmdb_id,tmdb_name=tmdb_name)
+		logger.info('tmdb_id: {}'.format(tmdb_id))
+		return tmdb_id
 
 	@classmethod
 	def find_seasons(cls,show_id):
