@@ -1,4 +1,4 @@
-#!/home/webmaster/sloth_proj/bin/python3
+#!/home/webmaster/sloth_proj/bin/python3.6
 from django.core import management
 
 if __name__ == "__main__":

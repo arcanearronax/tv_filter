@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'tvapi.apps.TVAPIConfig',
 ]
 
 MIDDLEWARE = [
@@ -141,6 +142,12 @@ LOGGING = {
 			'filename': '/home/webmaster/sloth_proj/tvapi/logs/info.log',
 			'formatter': 'simple',
 		},
+        'structlog': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': '/home/webmaster/sloth_proj/tvapi/logs/struct.log',
+            'formatter': 'simple',
+        }
 	},
 	'loggers': {
 		'apilog': {
@@ -148,5 +155,10 @@ LOGGING = {
 			'level': 'INFO',
 			'propogate': True,
 		},
+        'structlog': {
+            'handlers': ['structlog'],
+            'level': 'INFO',
+            'propogate': True,
+        },
 	},
 }

@@ -4,11 +4,73 @@ from django.template import loader
 from django.shortcuts import redirect
 from .forms import BaseForm
 from .apiclient import APIClient
+from .models import *
 import logging
 
 logger = logging.getLogger('apilog')
 
 REDACTED = ['Hamilton','hamilton']
+
+class TmpView(View):
+
+	def get(self,request,show_id=None,season=None,episode=None):
+		logger.info('TmpGet: {}'.format(show_id))
+
+		context = {'form': BaseForm}
+		template = loader.get_template('query.html')
+
+		if episode:
+			logger.info('episode-context: {}'.format(show_id))
+			match = Episode.get_match()
+			context.update({
+				'show_name': Show.get_show_name(show_id),
+				'season': season,
+				'episode': Episode.get_name(show_id=show_id,season=season,ep_num=episode),
+				'match': match,
+			})
+
+		elif season:
+			logger.info('GET_SEASON')
+			context.update({
+				'show_name': Show.get_show_name(show_id),
+				'season': season,
+				'episodes': Episode.get_count(show_id=show_id,season=season),
+			})
+
+		elif show_id:
+			context.update({
+				'show_name': Show.get_show_name(show_id),
+				'seasons': Show.get_season_count(show_id),
+			})
+
+		else:
+			template = loader.get_template('find_show.html')
+
+		return HttpResponse(template.render(context,request))
+
+
+	def post(self,request,show_id=None,season=None,episode=None):
+		logger.info('TmpPost - {}'.format(request))
+		template = loader.get_template('query.html')
+		form = BaseForm(request.POST)
+
+		if form.is_valid():
+			logger.info('form_validated')
+			querytype = form.cleaned_data['querytype']
+			queryvalue = form.cleaned_data['queryvalue']
+
+			ret = None
+			if querytype == 'find_show':
+				show_id = Show.get_id_by_name(queryvalue)
+				ret = redirect('tmpShowView',show_id=show_id)
+
+			elif querytype == 'season':
+				ret = redirect('tmpSeasonView',show_id=show_id,season=queryvalue)
+
+			elif querytype == 'episode':
+				ret = redirect('tmpEpisodeView',show_id=show_id, season=season,episode=queryvalue)
+
+		return ret
 
 class APIView(View):
 
@@ -16,7 +78,7 @@ class APIView(View):
 
 	def match_found(list_data):
 		match = False
-		
+
 		logger.info('MATCHED DATA: {}'.format(list_data))
 
 		for char_pair in list_data:
@@ -35,34 +97,30 @@ class APIView(View):
 
 		if episode:
 			template = loader.get_template('query.html')
-
-			cast = self.__class__.client.get_episode_cast(show_id=show_id,season=season,episode=episode)
+			cast = self.__class__.client.get_episode_cast(tmdb_show_id=show_id,season=season,ep_num=episode)
 			logger.info('episode-context: {}'.format(cast))
 
 			match = APIView.match_found(cast)
 			context.update({'match':match})
-			
-						
 
-		
 		elif season:
 			template = loader.get_template('query.html')
-			context.update(self.__class__.client.get_episodes(show_id=show_id,season=season))
-			context['season'] = season
-			#context['show_name'] = APIView.show_name
+			context.update({
+				'show_name': self.__class__.client.get_show_name(show_id),
+				'season': season,
+				'episodes': self.__class__.client.get_episode_count(show_tmdb_id=show_id,season_num=season),
+			})
 
-		elif show_id: 
+		elif show_id:
+			template = loader.get_template('query.html')
 			context.update({
 				'show_name': self.__class__.client.get_show_name(show_id),
 				'seasons': str(self.__class__.client.find_seasons(show_id)),
 			})
-			logger.info('Exception: {}'.format(e))
 			self.__class__.client.get_show_imdb_id(show_id)
-
 
 		else:
 			template = loader.get_template('find_show.html')
-
 
 		return HttpResponse(template.render(context,request))
 
@@ -72,7 +130,7 @@ class APIView(View):
 		template = loader.get_template('query.html')
 		form = BaseForm(request.POST)
 
-		if form.is_valid():	
+		if form.is_valid():
 			querytype = form.cleaned_data['querytype']
 			queryvalue = form.cleaned_data['queryvalue']
 
@@ -88,4 +146,3 @@ class APIView(View):
 				ret = redirect('episodeView', show_id=show_id, season=season,episode=queryvalue)
 
 		return ret
-

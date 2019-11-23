@@ -1,3 +1,8 @@
 tvapi/logs/*
 tvapi/tvapi/__pycache__/*
 tvapi/tvapi/*.sock
+tvapi/tvapi/wsgi.py
+
+bin/*
+include/*
+lib/*

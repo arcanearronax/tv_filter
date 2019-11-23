@@ -1,0 +1,19 @@
+
+import logging
+from .models import *
+
+logger = logging.getLogger('apilog')
+
+class APIClient():
+
+	def get_show_name(show_id):
+		pass
+
+	def get_season_count(show_id):
+		pass
+
+	def get_episode_count(show_id,season_id):
+		pass
+
+	def get_episode_cast(episode_id):
+		pass
