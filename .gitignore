@@ -1,7 +1,10 @@
 tvapi/tvapi/__pycache__/*
+tvapi/tvapi/migrations
 tvapi/tvapi/*.sock
 tvapi/tvapi/wsgi.py
+
 *.pyc
+.bak
 
 bin
 include
