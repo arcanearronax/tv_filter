@@ -1,8 +1,9 @@
-tvapi/logs/*
 tvapi/tvapi/__pycache__/*
 tvapi/tvapi/*.sock
 tvapi/tvapi/wsgi.py
+*.pyc
 
 bin/*
 include/*
 lib/*
+lib64/*
