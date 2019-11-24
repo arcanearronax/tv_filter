@@ -3,7 +3,7 @@ tvapi/tvapi/*.sock
 tvapi/tvapi/wsgi.py
 *.pyc
 
-bin/*
-include/*
-lib/*
-lib64/*
+bin
+include
+lib
+lib64
