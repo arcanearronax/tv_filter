@@ -4,7 +4,7 @@ tvapi/tvapi/*.sock
 tvapi/tvapi/wsgi.py
 
 *.pyc
-.bak
+*.bak
 
 bin
 include
