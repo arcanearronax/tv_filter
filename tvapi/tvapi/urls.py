@@ -16,7 +16,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.conf import settings
-from .views import APIView, TmpView
+from .views import APIView#, TmpView
 
 urlpatterns = [
 	path('', APIView.as_view(), name='apiview'),
@@ -24,9 +24,9 @@ urlpatterns = [
 	path('tv/<int:show_id>/', APIView.as_view(), name='showView'),
 	path('tv/<int:show_id>/season/<int:season>/', APIView.as_view(), name='seasonView'),
 	path('tv/<int:show_id>/season/<int:season>/episode/<int:episode>/', APIView.as_view(), name='episodeView'),
-    path('tmp/shows',TmpView.as_view(),name='tmpShows'),
-	path('tmp/tv/<int:show_id>/', TmpView.as_view(), name='tmpShowView'),
-	path('tmp/tv/<int:show_id>/season/<int:season>/', TmpView.as_view(), name='tmpSeasonView'),
-	path('tmp/tv/<int:show_id>/season/<int:season>/episode/<int:episode>/', TmpView.as_view(), name='tmpEpisodeView'),
+    #path('tmp/shows',TmpView.as_view(),name='tmpShows'),
+	#path('tmp/tv/<int:show_id>/', TmpView.as_view(), name='tmpShowView'),
+	#path('tmp/tv/<int:show_id>/season/<int:season>/', TmpView.as_view(), name='tmpSeasonView'),
+	#path('tmp/tv/<int:show_id>/season/<int:season>/episode/<int:episode>/', TmpView.as_view(), name='tmpEpisodeView'),
     path('admin/', admin.site.urls),
 ] #+ static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

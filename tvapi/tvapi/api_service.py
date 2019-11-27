@@ -70,7 +70,7 @@ class APIService():
 		logger.info('get_episodes: {} - {}'.format(tmdb_id,season))
 
 		url = '{}tv/{}/season/{}?api_key={}&language={}'.format(tmdb_uri, tmdb_id, season, api_key, language)
-		#logger.info('url: {}'.format(url))
+		logger.info('url: {}'.format(url))
 		req = requests.get(url)
 		json_data = json.loads(req.text)
 		#logger.info('json_data: {}'.format(json_data))
@@ -125,47 +125,78 @@ class APIService():
 		return episode_info
 
 	@classmethod
-	def get_season_imdb_info(cls,imdb_id,season):
-		logger.info('get_season_imdb_info: {} - {}'.format(imdb_id,season))
+	def get_episodes_imdb_info(cls,imdb_id,season):
+		logger.info('get_episodes: {} - {}'.format(imdb_id,season))
 
 		url = 'https://www.imdb.com/title/{}/episodes?season={}'.format(imdb_id,season)
 		page = requests.get(url)
+		logger.info('Page: {}'.format(url))
 		assert page.status_code == 200, 'Failed to retrieve page'
 
 		soup = BeautifulSoup(page.content, 'html.parser')
-		eps_div_odd = soup.find('div',{'class':'list_item odd'})
+		eps_div_odd = soup.find_all('div',{'class':'list_item odd'})
 		logger.info('eps_div_odd len: {}'.format(len(eps_div_odd)))
-		eps_div_even = soup.find('div',{'class':'list_item odd'})
+		eps_div_even = soup.find_all('div',{'class':'list_item even'})
 		logger.info('eps_div_even len: {}'.format(len(eps_div_even)))
-		eps_div_full = ep_div_odd + ep_div_even
+		eps_div_full = eps_div_odd + eps_div_even
 
-		episodes = {}
+		episodes = []
 
 		# Cycle through the items
-		for ep in ep_div_full:
+		for ep in eps_div_full:
 			# Get the image div
 			image_div = ep.find('div',{'class':'image'})
 			a_elem = image_div.find('a')
 
 			a_div = a_elem.find('div')
 			div_cont = a_div.find('div').text
-			imdb_name = a_elem.find('title')
-			logger.info('imdb_name: {}'.format(imdb_name))
+			#imdb_name = a_elem.find('title')
+			imdb_name = a_elem['title']
 
 			ep_num = re.search('[\d]*$',div_cont).group(0)
-			logger.info('ep_num: {}'.format(ep_num))
+			#logger.info('ep_num: {}'.format(ep_num))
 
 			hover_div = a_elem.find('div',{'class':'hover-over-image'})
 			ep_imdb_id = hover_div['data-const']
-			logger.info('emp_imdb_id: {}'.format(ep_imdb_id))
+			#logger.info('emp_imdb_id: {}'.format(ep_imdb_id))
 
-			cls.shows.set_episode(show_tmdb_id,season_num,ep_num,imdb_id,imdb_name)
 			episode = {
 				'ep_num': ep_num,
 				'imdb_id': ep_imdb_id,
 				'imdb_name': imdb_name,
 			}
 
-			episodes.update(episode)
+			logger.info('EP IMDB: {}'.format(episode))
 
+			episodes.append(episode)
+
+		logger.info('EPISODES---{}'.format(episodes))
 		return episodes
+
+	@classmethod
+	def get_episode_cast(cls,ep_imdb_id):
+		url = 'https://www.imdb.com/title/{}/fullcredits'.format(ep_imdb_id)
+		logger.info('ep_url: {}'.format(url))
+		req = requests.get(url)
+		soup = BeautifulSoup(req.content,'html.parser')
+		#logger.info('soup: {}'.format(soup))
+		cast_table = soup.find('table', {'class':'cast_list'})
+
+		cast_odd = cast_table.find_all('tr', {'class':'odd'})
+		cast_even = cast_table.find_all('tr', {'class':'even'})
+		logger.info('1={} 2={}'.format(len(cast_odd),len(cast_even)))
+		cast_full = cast_odd + cast_even
+
+		episode_cast = []
+		for cast in cast_full:
+			logger.info('Loop start')
+			cast_photo = cast.find('td',{'class':'primary_photo'})
+			cast_name = cast_photo.find('img')['title'].strip('\n')
+			cast_char = cast.find('td', {'class': 'character'}).text.replace('\n','')
+			#cls.shows[str_tmdb_show_id]['seasons'][str_season]['episodes'][str_ep_num]['cast'].set(cast_name,character=cast_char)
+			episode_cast.append({
+				'actor': cast_name,
+				'character': cast_char,
+			})
+
+		return episode_cast

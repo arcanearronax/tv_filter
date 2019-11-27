@@ -78,6 +78,28 @@ class Episode(models.Model):
     api_service = APIService
 
     @classmethod
+    def get_episode_id(cls,show_id,season,ep_num):
+        try:
+            return cls.objects.filter(show_id=show_id,season=season,ep_num=ep_num)[0].episode_id
+        except:
+            return -1
+
+    @classmethod
+    def get_imdb_info(cls,show_id,season):
+        show_search = Show.get_show_name(show_id)
+        show_imdb_id = Show.objects.get(show_id=show_id).imdb_id
+        episodes = cls.api_service.get_episodes_imdb_info(show_imdb_id,season)
+        logger.info('EPISODES: {}'.format(episodes))
+
+        for ep in episodes:
+            ep_model = cls.objects.filter(show_id=show_id,season=season,ep_num=ep['ep_num'])[0]
+            ep_model.imdb_id = ep['imdb_id']
+            ep_model.imdb_name = ep['imdb_name']
+            logger.info('ep_model: {}'.format(ep_model))
+            ep_model.full_clean()
+            ep_model.save()
+
+    @classmethod
     def get_count(cls,show_id,season):
 
         # If we have episodes, go ahead and return
@@ -89,6 +111,7 @@ class Episode(models.Model):
         logger.info('showwwwww: {}'.format(Show.objects.get(show_id=show_id)))
         show_tmdb_id = Show.objects.get(show_id=show_id).tmdb_id
         episodes = cls.api_service.get_episodes(show_tmdb_id,season)
+        print('episodes_class: {}'.format(episodes))
 
         for ep in episodes:
             logger.info('ep: {}'.format(ep))
@@ -100,49 +123,88 @@ class Episode(models.Model):
     def get_name(cls,show_id,season,ep_num):
         logger.info('get_name: {} - {} - {}'.format(show_id,season,ep_num))
 
-        try:
-            ret = Episode.objects.filter(show_id=show_id,season=season,ep_num=ep_num)[0].imdb_name
+        ret = cls.objects.filter(show_id=show_id,season=season,ep_num=ep_num)[0].imdb_name
 
-            if (not ret):
-                ret = Episode.objects.filter(show_id=show_id,season=season,ep_num=ep_num)[0].imdb_namd
+        #if (not ret):
+        #    ret = cls.objects.filter(show_id=show_id,season=season,ep_num=ep_num)[0].tmdb_name
 
-        except NameError as e:
-            logger.info('FUCK')
-
-        except Exception as e:
-            logger.info('get_name_error: {}'.format(e))
+        if (not ret):
+            logger.info('imdb_name not found')
             show_search = Show.get_show_name(show_id)
             show = Show.objects.get(show_id=show_id)
             logger.info('Found IMDB ID: {}'.format(show.imdb_id))
             show_imdb_id = show.imdb_id
-            ep_info = cls.api_service.get_season_imdb_info(show_imdb_id,season)
+            episodes = cls.api_service.get_episodes_imdb_info(show_imdb_id,season)
+            logger.info('EPISODES: {}'.format(episodes))
 
-            logger.info('get_name-imdb_id = {}'.format(ep_info['imdb_id']))
-            logger.info('get_name-imdb_name = {}'.format(imdb_name))
+            #episode = cls(ep_num=ep_num,imdb_id=ep_info['imdb_id'],imdb_name=ep_info['imdb_name'],season=season,show_id=show_id)
+            #episode.save()
 
-            episode = cls(ep_num=ep_num,imdb_id=ep_info['imdb_id'],imdb_name=ep_info['imdb_name'],season=season,show_id=show_id)
-            episode.save()
+            for ep in episodes:
+                logger.info('EP Type: {}'.format(ep))
+                ep_model = cls.objects.filter(show_id=show_id,season=season,ep_num=ep['ep_num'])[0]
+                ep_model.imdb_id = ep['imdb_id']
+                ep_model.imdb_name = ep['imdb_name']
+                logger.info('ep_model: {}'.format(ep_model))
+                ep_model.full_clean()
+                ep_model.save()
 
-            return episode.imdb_name
+            ret = cls.objects.filter(show_id=show_id,season=season,ep_num=ep_num)[0].imdb_name
 
         return ret
 
     @classmethod
-    def get_imdb_id(cls,show_id,season,episode):
-        logger.info('get_imdb_info: {} - {} - {}'.format(show_id,season,episode))
+    def get_imdb_id(cls,show_id,season,ep_num):
+        logger.info('get_imdb_info: {} - {} - {}'.format(show_id,season,ep_num))
 
         try:
-            return Episode.objects.filter(show_id=show_id,season=season,ep_num=episode)
-
+            return cls.objects.filter(show_id=show_id,season=season,ep_num=ep_num)[0].imdb_id
         except Exception as e:
-            logger.info('get_imdb_id_error: {}'.format(e))
+            episode = cls.objects.filter(show=show_id,season=season,ep_num=ep_num)[0]
+            cls.get_imdb_info(episode.show.show_id,episode.season)
+            return cls.objects.filter(episode_id=episode_id,season=season,ep_num=ep_num)
+
+    @classmethod
+    def get_imdb_id_by_id(cls,episode_id):
+        try:
+            return cls.objects.filter(episode_id=episode_id)[0].imdb_id
+        except Exception:
+            episode = cls.objects.filter(episode_id=episode_id)[0]
+            cls.get_imdb_info(episode.show.show_id,episode.season)
+            return cls.objects.filter(episode_id=episode_id)[0].imdb_id
 
 
-
-    def get_match():
-        pass
 
 class Cast(models.Model):
     cast_id = models.AutoField(primary_key=True)
     actor = models.CharField(max_length=100)
     character = models.CharField(max_length=100)
+    episode_id = models.ForeignKey(Episode,on_delete=models.CASCADE)
+
+    api_service = APIService
+
+    @classmethod
+    def get_cast(cls,episode_id):
+        episode = Episode.objects.get(episode_id=episode_id)
+        try:
+            ret = cls.objects.filter(episode_id=episode)
+        except Exception:
+            imdb_id = Episode.get_imdb_id_by_id(episode_id)
+            ep_cast = cls.api_service.get_episode_cast(imdb_id)
+            for cast in ep_cast:
+                cast_model = cls(actor=cast['actor'],character=cast['character'],episode_id=episode)
+                cast_model.full_clean()
+                cast_model.save()
+            ret = cls.objects.filter(episode_id=episode)
+        return ret
+
+    @classmethod
+    def get_match(cls,episode_id,term):
+        cast = cls.get_cast(episode_id)
+        logger.info('CAST: {}'.format(cast))
+        ret = False
+        for entry in cast:
+            logger.info('cast_entry: {}'.format(entry))
+            if (term in entry.actor or term in entry.character):
+                ret = True
+        return ret
