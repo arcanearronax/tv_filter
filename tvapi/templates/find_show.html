@@ -1,9 +1,12 @@
-{% load static %}
+{% extends 'base.html' %}
 <!DOCTYPE html>
 
-<html>
-	<h3>Enter the show name:</h3>
-	
+{% block page_title %}
+	<h1>Enter the show name:</h1>
+	<h3 color:"red">{{ message }}</h3>
+{% endblock %}
+
+{% block temp_form %}
 	<form method="POST">
 		{% csrf_token %}
 		<table>
@@ -17,4 +20,4 @@
 		</table>
 		<input type="submit" value="Submit Button" name="BaseForm" id="SubmitButton">
 	</form>
-</html>
+{% endblock %}

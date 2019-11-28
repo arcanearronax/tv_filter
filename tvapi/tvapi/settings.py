@@ -131,7 +131,7 @@ LOGGING = {
 	'disable_existing_loggers': False,
 	'formatters': {
 		'simple': {
-			'format': '{asctime}\t{levelname}\t{process:d}\t{thread:d}-\t{message}',
+			'format': '{asctime}\t{levelname}\t{process:d}\t{thread:d}-{message}',
 			'style': '{',
 		},
 	},

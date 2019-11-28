@@ -1,4 +1,4 @@
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 from django.views import View
 from django.template import loader
 from django.shortcuts import redirect
@@ -12,57 +12,66 @@ REDACTED = ['Hamilton','hamilton']
 
 class APIView(View):
 
-	def get(self,request,show_id=None,season=None,episode=None):
+	def get(self,request,show_id=None,season=None,episode=None,message=None):
 		logger.info('APIView.get: {}'.format(show_id))
 
 		context = {'form': BaseForm}
 		template = loader.get_template('query.html')
 
-		if episode:
-			logger.info('episode-context: {}'.format(show_id))
-			episode_id = Episode.get_episode_id(show_id=show_id,season=season,ep_num=episode)
-			match = False
+		# If we fail, generic 404 page
+		try:
+			if episode:
+				episode_id = Episode.get_episode_id(show_id=show_id,season=season,ep_num=episode)
+				match = False
+				for term in REDACTED:
+					match = (Cast.get_match(episode_id,term) or match)
 
-			for term in REDACTED:
-				logger.info('Looping')
-				match = (Cast.get_match(episode_id,term) or match)
+				context.update({
+					'show_name': Show.get_show_name(show_id),
+					'season': season,
+					'episode': '{} - {}'.format(episode, Episode.get_name(show_id=show_id,season=season,ep_num=episode)),
+					'match': match,
+					'message': message,
+				})
 
-			context.update({
-				'show_name': Show.get_show_name(show_id),
-				'season': season,
-				'episode': '{} - {}'.format(episode, Episode.get_name(show_id=show_id,season=season,ep_num=episode)),
-				'match': match,
-			})
+			elif season:
+				context.update({
+					'show_name': Show.get_show_name(show_id),
+					'season': season,
+					'episodes': Episode.get_count(show_id=show_id,season=season),
+					'message': message,
+				})
 
-		elif season:
-			logger.info('GET_SEASON')
-			context.update({
-				'show_name': Show.get_show_name(show_id),
-				'season': season,
-				'episodes': Episode.get_count(show_id=show_id,season=season),
-			})
+			elif show_id:
+				context.update({
+					'show_name': Show.get_show_name(show_id),
+					'seasons': Show.get_season_count(show_id),
+					'message': message,
+				})
 
-		elif show_id:
-			context.update({
-				'show_name': Show.get_show_name(show_id),
-				'seasons': Show.get_season_count(show_id),
-			})
-
+			else:
+				template = loader.get_template('find_show.html')
+				context.update({
+					'message': message,
+				})
+		except Exception as e:
+			logger.info('APIView.get exception: {}'.format(e))
+			raise Http404('Could Not Find Resource')
 		else:
-			template = loader.get_template('find_show.html')
-
-		return HttpResponse(template.render(context,request))
+			return HttpResponse(template.render(context,request))
 
 
 	def post(self,request,show_id=None,season=None,episode=None):
-		logger.info('APIView.post - {}'.format(request))
+		logger.info('APIView.post - {} - {} - {}'.format(show_id,season,episode))
 		template = loader.get_template('query.html')
 		form = BaseForm(request.POST)
 
 		if form.is_valid():
-			logger.info('form_validated')
+			logger.info('\tform_validated')
 			querytype = form.cleaned_data['querytype']
 			queryvalue = form.cleaned_data['queryvalue']
+			logger.info('\tquerytype: {}'.format(querytype))
+			logger.info('\tqueryvalue: {}'.format(queryvalue))
 
 			ret = None
 			if querytype == 'find_show':
@@ -74,5 +83,9 @@ class APIView(View):
 
 			elif querytype == 'episode':
 				ret = redirect('episodeView',show_id=show_id, season=season,episode=queryvalue)
+			else:
+				ret = redirect('shows',request=request,message='No results for: {}: {}'.format(querytype, queryvalue))
+		else:
+			logger.info('\tFORM INVALID')
 
 		return ret

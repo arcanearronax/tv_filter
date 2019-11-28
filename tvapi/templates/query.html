@@ -1,7 +1,8 @@
 {% extends 'base.html' %}
 
 {% block page_title %}
-	<h3>{{ show_name }}</h3>
+	<h1>{{ show_name }}</h1>
+	<h3 color:"red">{{ message }}</h3>
 	{% if seasons %}
 		<h5>Seasons: {{ seasons }}</h5>
 	{% else %}
@@ -21,7 +22,7 @@
 	{% else %}
 		<p>NO MATCH</p>
 	{% endif %}
-	
+
 {% endblock %}
 
 {% block temp_form %}
@@ -39,4 +40,3 @@
 		<input type="submit" value="Submit Button" name="BaseForm" id="SubmitButton">
 	</form>
 {% endblock %}
-
