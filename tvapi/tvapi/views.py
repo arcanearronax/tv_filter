@@ -1,4 +1,4 @@
-from django.http import HttpResponse, Http404
+from django.http import HttpResponse, Http404, HttpResponseRedirect
 from django.views import View
 from django.template import loader
 from django.shortcuts import redirect
@@ -35,6 +35,7 @@ class APIView(View):
 				})
 
 			elif season:
+				#Episode.get_imdb_info(show_id,season)
 				context.update({
 					'show_name': Show.get_show_name(show_id),
 					'season': season,
@@ -75,8 +76,14 @@ class APIView(View):
 
 			ret = None
 			if querytype == 'find_show':
-				show_id = Show.get_id_by_name(queryvalue)
-				ret = redirect('showView',show_id=show_id)
+				try:
+					show_id = Show.get_id_by_name(queryvalue)
+				except ShowNotFound as s:
+					logger.info('\tShowNotFound - {}'.format(s))
+					request.method = 'GET'
+					ret = redirect('shows',message='Failed to find: {}'.format(queryvalue))
+				else:
+					ret = redirect('showView',show_id=show_id)
 
 			elif querytype == 'season':
 				ret = redirect('seasonView',show_id=show_id,season=queryvalue)
@@ -84,6 +91,7 @@ class APIView(View):
 			elif querytype == 'episode':
 				ret = redirect('episodeView',show_id=show_id, season=season,episode=queryvalue)
 			else:
+				#request.method = 'GET'
 				ret = redirect('shows',request=request,message='No results for: {}: {}'.format(querytype, queryvalue))
 		else:
 			logger.info('\tFORM INVALID')

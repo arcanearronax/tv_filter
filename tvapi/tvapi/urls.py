@@ -16,11 +16,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.conf import settings
-from .views import APIView#, TmpView
+from .views import APIView
 
 urlpatterns = [
-	path('', APIView.as_view(), name='apiview'),
-	path('shows', APIView.as_view(), name='shows'),
+	path('', APIView.as_view(), name='shows'),
+    #path('/', APIView.as_view(), name='shows'),
 	path('tv/<int:show_id>/', APIView.as_view(), name='showView'),
 	path('tv/<int:show_id>/season/<int:season>/', APIView.as_view(), name='seasonView'),
 	path('tv/<int:show_id>/season/<int:season>/episode/<int:episode>/', APIView.as_view(), name='episodeView'),

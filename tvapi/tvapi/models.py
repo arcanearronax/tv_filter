@@ -103,9 +103,18 @@ class Episode(models.Model):
         logger.info('\tepisode count: {}'.format(len(episodes)))
 
         for ep in episodes:
-            ep_model = cls.objects.filter(show_id=show_id,season=season,ep_num=ep['ep_num'])[0]
+            logger.info('\tLOOP')
+            logger.info('\t\t{} - {} - {}'.format(show_id,season,ep['ep_num']))
+            try:
+                ep_model = cls.objects.filter(show_id=show_id,season=season,ep_num=ep['ep_num'])[0]
+            except Exception as e:
+                logger.info('\tFailed to retrieve IMDB INFO: {}'.format(ep['ep_num']))
+                logger.info('\texception: {}'.format(e))
+                pass
             ep_model.imdb_id = ep['imdb_id']
+            logger.info('\t\timdb_id={}'.format(ep_model.imdb_id))
             ep_model.imdb_name = ep['imdb_name']
+            logger.info('\t\timdb_name={}'.format(ep_model.imdb_name))
             ep_model.full_clean()
             ep_model.save()
             logger.info('\tepisode saved: {}'.format(ep_model.episode_id))
@@ -128,6 +137,8 @@ class Episode(models.Model):
         for ep in episodes:
             #logger.info('ep: {}'.format(ep))
             episode = cls(ep_num=str(ep['ep_num']),tmdb_id=str(ep['tmdb_id']),tmdb_name=ep['tmdb_name'],season=season,show_id=show_id).save()
+
+        cls.get_imdb_info(show_id,season)
 
         return cls.objects.filter(show=show_id,season=season).count()
 

@@ -49,8 +49,12 @@ class APIService():
 		json_data = json.loads(req.text)
 		logger.info('\tjson_data len: {}'.format(len(json_data['results'])))
 
-		tmdb_name = json_data['results'][0]['original_name']
-		tmdb_id = json_data['results'][0]['id']
+		try:
+			tmdb_name = json_data['results'][0]['original_name']
+			tmdb_id = json_data['results'][0]['id']
+		except Exception as e:
+			logger.info('\texception: {}'.format(e))
+			raise ShowNotFound('show_search: {}'.format(show_search))
 		logger.info('\ttmdb: {} - {}'.format(tmdb_id, tmdb_name))
 
 		# Then get the show's info
@@ -208,3 +212,20 @@ class APIService():
 
 		logger.info('\treturning: {}'.format(len(episode_cast)))
 		return episode_cast
+
+class APIException(Exception):
+	"""Base class for API exceptions"""
+	pass
+
+class ShowNotFound(APIException):
+	pass
+
+class EpisodeNotFound(APIException):
+	pass
+
+class CastNotFound(APIException):
+	pass
+
+class InvalidPage(APIException):
+	"""Use this is we have a failure retrieving source pages"""
+	pass
