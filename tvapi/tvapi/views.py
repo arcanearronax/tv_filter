@@ -15,11 +15,16 @@ class APIView(View):
 	def get(self,request,show_id=None,season=None,episode=None,message=None):
 		logger.info('APIView.get: {}'.format(show_id))
 
-		context = {'form': BaseForm}
+		context = {
+			'form': BaseForm,
+			'message': message,
+		}
 		template = loader.get_template('query.html')
 
 		# If we fail, generic 404 page
 		try:
+			if message and not show_id:
+				pass
 			if episode:
 				episode_id = Episode.get_episode_id(show_id=show_id,season=season,ep_num=episode)
 				match = False
@@ -31,7 +36,6 @@ class APIView(View):
 					'season': season,
 					'episode': '{} - {}'.format(episode, Episode.get_name(show_id=show_id,season=season,ep_num=episode)),
 					'match': match,
-					'message': message,
 				})
 
 			elif season:
@@ -40,21 +44,17 @@ class APIView(View):
 					'show_name': Show.get_show_name(show_id),
 					'season': season,
 					'episodes': Episode.get_count(show_id=show_id,season=season),
-					'message': message,
 				})
 
 			elif show_id:
 				context.update({
 					'show_name': Show.get_show_name(show_id),
 					'seasons': Show.get_season_count(show_id),
-					'message': message,
 				})
 
 			else:
 				template = loader.get_template('find_show.html')
-				context.update({
-					'message': message,
-				})
+
 		except Exception as e:
 			logger.info('APIView.get exception: {}'.format(e))
 			raise Http404('Could Not Find Resource')
@@ -76,12 +76,13 @@ class APIView(View):
 
 			ret = None
 			if querytype == 'find_show':
+				# Find search result or redirect with message
 				try:
 					show_id = Show.get_id_by_name(queryvalue)
 				except ShowNotFound as s:
 					logger.info('\tShowNotFound - {}'.format(s))
-					request.method = 'GET'
-					ret = redirect('shows',message='Failed to find: {}'.format(queryvalue))
+					#request.method = 'GET'
+					ret = redirect('failure',message='Failed to find: {}'.format(queryvalue))
 				else:
 					ret = redirect('showView',show_id=show_id)
 

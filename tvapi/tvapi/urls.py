@@ -20,7 +20,7 @@ from .views import APIView
 
 urlpatterns = [
 	path('', APIView.as_view(), name='shows'),
-    #path('/', APIView.as_view(), name='shows'),
+    path('failue/', APIView.as_view(), name='failure'),
 	path('tv/<int:show_id>/', APIView.as_view(), name='showView'),
 	path('tv/<int:show_id>/season/<int:season>/', APIView.as_view(), name='seasonView'),
 	path('tv/<int:show_id>/season/<int:season>/episode/<int:episode>/', APIView.as_view(), name='episodeView'),

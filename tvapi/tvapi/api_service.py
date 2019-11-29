@@ -45,11 +45,12 @@ class APIService():
 		url = '{}search/tv?api_key={}&language={}&query={}'.format(tmdb_uri, api_key, language, url_encode(show_search))
 		logger.info('\turl: {}'.format(url))
 
-		req = requests.get(url)
-		json_data = json.loads(req.text)
-		logger.info('\tjson_data len: {}'.format(len(json_data['results'])))
-
 		try:
+			req = requests.get(url)
+			json_data = json.loads(req.text)
+			logger.info('\tjson_data len: {}'.format(len(json_data['results'])))
+
+
 			tmdb_name = json_data['results'][0]['original_name']
 			tmdb_id = json_data['results'][0]['id']
 		except Exception as e:
