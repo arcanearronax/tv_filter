@@ -1,5 +1,5 @@
 tvapi/tvapi/__pycache__/*
-tvapi/logs/*
+tvapi/logs/*.log
 tvapi/tvapi/migrations
 tvapi/tvapi/*.sock
 tvapi/tvapi/wsgi.py
