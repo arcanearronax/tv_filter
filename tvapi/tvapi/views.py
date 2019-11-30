@@ -13,7 +13,7 @@ REDACTED = ['Hamilton','hamilton']
 class APIView(View):
 
 	def get(self,request,show_id=None,season=None,episode=None,message=None):
-		logger.info('APIView.get: {}'.format(show_id))
+		logger.info('APIView.get: {} - {} - {} - {}'.format(show_id,season,episode,message))
 
 		context = {
 			'form': BaseForm,
@@ -81,8 +81,12 @@ class APIView(View):
 					show_id = Show.get_id_by_name(queryvalue)
 				except ShowNotFound as s:
 					logger.info('\tShowNotFound - {}'.format(s))
-					#request.method = 'GET'
-					ret = redirect('failure',message='Failed to find: {}'.format(queryvalue))
+					message = 'Failed to find: {}'.format(queryvalue)
+					ret = APIView.get(self,request,message=message)
+				except NoSearchResults as n:
+					logger.info('\tNoSearchResults - {}'.format(n))
+					message = 'No Results for {}'.format(queryvalue)
+					ret = APIView.get(self,request,message=message)
 				else:
 					ret = redirect('showView',show_id=show_id)
 

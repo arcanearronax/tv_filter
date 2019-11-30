@@ -124,14 +124,17 @@ class APIService():
 			's': show_search,
 		}
 
-		req = requests.get(url,headers=headers,params=parameters)
+		try:
+			req = requests.get(url,headers=headers,params=parameters)
 
-		json_data = json.loads(req.text)
-		logger.info('\tjson_data len: {}'.format(len(json_data)))
+			json_data = json.loads(req.text)
+			logger.info('\tjson_data len: {}'.format(len(json_data)))
 
-		imdb_id = json_data['Search'][0]['imdbID']
-		imdb_name = json_data['Search'][0]['Title']
-		logger.info('\timdb: {} - {}'.format(imdb_id,imdb_name))
+			imdb_id = json_data['Search'][0]['imdbID']
+			imdb_name = json_data['Search'][0]['Title']
+			logger.info('\timdb: {} - {}'.format(imdb_id,imdb_name))
+		except KeyError as s:
+			raise NoSearchResults('Failed to find: {}'.format(show_search))
 
 		episode_info = {
 			'imdb_id': imdb_id,
@@ -216,6 +219,9 @@ class APIService():
 
 class APIException(Exception):
 	"""Base class for API exceptions"""
+	pass
+
+class NoSearchResults(APIException):
 	pass
 
 class ShowNotFound(APIException):
