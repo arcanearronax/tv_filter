@@ -83,8 +83,8 @@ class APIView(View):
 					#logger.info('\tShowNotFound - {}'.format(s))
 					message = 'Failed to find: {}'.format(queryvalue)
 					ret = APIView.get(self,request,message=message)
-				except NoSearchResults as n:
-					logger.info('\tNoSearchResults - {}'.format(n))
+				except InvalidPage as n:
+					#logger.info('\tNoSearchResults - {}'.format(n))
 					message = 'No Results for {}'.format(queryvalue)
 					ret = APIView.get(self,request,message=message)
 				else:
