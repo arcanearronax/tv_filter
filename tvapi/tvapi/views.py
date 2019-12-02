@@ -79,8 +79,8 @@ class APIView(View):
 				# Find search result or redirect with message
 				try:
 					show_id = Show.get_id_by_name(queryvalue)
-				except ShowNotFound as s:
-					logger.info('\tShowNotFound - {}'.format(s))
+				except ResourceNotFound as s:
+					#logger.info('\tShowNotFound - {}'.format(s))
 					message = 'Failed to find: {}'.format(queryvalue)
 					ret = APIView.get(self,request,message=message)
 				except NoSearchResults as n:

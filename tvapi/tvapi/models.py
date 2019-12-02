@@ -248,3 +248,15 @@ class Cast(models.Model):
                 ret = True
         logger.info('\treturning: {}'.format(ret))
         return ret
+
+class ModelException(Exception):
+    pass
+
+class ShowException(ModelException):
+    pass
+
+class EpisodeException(ModelException):
+    pass
+
+class CastException(ModelException):
+    pass

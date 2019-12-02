@@ -4,6 +4,7 @@ tvapi/tvapi/migrations
 tvapi/tvapi/*.sock
 tvapi/tvapi/wsgi.py
 
+*.log
 *.pyc
 *.bak
 

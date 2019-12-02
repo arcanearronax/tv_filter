@@ -18,26 +18,6 @@ logger = logging.getLogger('apilog')
 class APIService():
 
 	@classmethod
-	def get_show_name(cls,tmdb_id):
-		logger.info('APIService.get_show_name: {}'.format(tmdb_id))
-		str_tmdb_id = str(tmdb_id)
-
-		url = '{}tv/{}?api_key={}&language={}'.format(tmdb_uri,str_tmdb_id,api_key,language)
-		logger.info('\turl: {}'.format(url))
-
-		req = requests.get(url)
-		json_data = json.loads(req.text)
-		logger.info('\tjson len: {}'.format(len(json_data)))
-
-		tmdb_name = json_data['name']
-		show = Show().set(tmdb_name=tmdb_name)
-		cls.shows[str_tmdb_id] = show
-		show_name = tmdb_name
-		logger.info('\tcreated: {}'.format(show_name))
-
-		return show_name
-
-	@classmethod
 	def get_show_tmdb_info(cls,show_search):
 		logger.info('APIService.get_show_tmdb_info: {}'.format(show_search))
 
@@ -55,7 +35,7 @@ class APIService():
 			tmdb_id = json_data['results'][0]['id']
 		except Exception as e:
 			logger.info('\texception: {}'.format(e))
-			raise ShowNotFound('show_search: {}'.format(show_search))
+			raise ResourceNotFound('show_search: {}'.format(show_search))
 		logger.info('\ttmdb: {} - {}'.format(tmdb_id, tmdb_name))
 
 		# Then get the show's info
@@ -134,7 +114,7 @@ class APIService():
 			imdb_name = json_data['Search'][0]['Title']
 			logger.info('\timdb: {} - {}'.format(imdb_id,imdb_name))
 		except KeyError as s:
-			raise NoSearchResults('Failed to find: {}'.format(show_search))
+			raise ResourceNotFound('Failed to find: {}'.format(show_search))
 
 		episode_info = {
 			'imdb_id': imdb_id,
@@ -151,7 +131,9 @@ class APIService():
 		logger.info('\turl: {}'.format(url))
 
 		page = requests.get(url)
-		assert page.status_code == 200, 'Failed to retrieve page'
+
+		if (page.status_code != 200):
+			raise InvalidPage('Status code: {}'.format(page.status_code))
 
 		soup = BeautifulSoup(page.content, 'html.parser')
 		eps_div_odd = soup.find_all('div',{'class':'list_item odd'})
@@ -219,18 +201,14 @@ class APIService():
 
 class APIException(Exception):
 	"""Base class for API exceptions"""
-	pass
 
-class NoSearchResults(APIException):
-	pass
+	def __init__(self,*args,**kwargs):
+		#logger.info('{}: {}'.format(self.__class__.__name__,' - '.join(args)))
+		print('{}: {}'.format(self.__class__.__name__,' - '.join(args)))
+		super().__init__(args,kwargs)
 
-class ShowNotFound(APIException):
-	pass
-
-class EpisodeNotFound(APIException):
-	pass
-
-class CastNotFound(APIException):
+class ResourceNotFound(APIException):
+	"""Use this is we fail to find a resource we're looking for"""
 	pass
 
 class InvalidPage(APIException):
