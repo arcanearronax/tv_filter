@@ -2,7 +2,7 @@ from django.http import HttpResponse, Http404, HttpResponseRedirect
 from django.views import View
 from django.template import loader
 from django.shortcuts import redirect
-from .forms import BaseForm
+from .forms import *
 from .models import *
 import logging
 
@@ -33,6 +33,7 @@ class APIView(View):
 
 				context.update({
 					'show_name': Show.get_show_name(show_id),
+					'form': EpisodeForm,
 					'season': season,
 					'episode': '{} - {}'.format(episode, Episode.get_name(show_id=show_id,season=season,ep_num=episode)),
 					'match': match,
@@ -42,6 +43,7 @@ class APIView(View):
 				#Episode.get_imdb_info(show_id,season)
 				context.update({
 					'show_name': Show.get_show_name(show_id),
+					'form': EpisodeForm,
 					'season': season,
 					'episodes': Episode.get_count(show_id=show_id,season=season),
 				})
@@ -49,10 +51,14 @@ class APIView(View):
 			elif show_id:
 				context.update({
 					'show_name': Show.get_show_name(show_id),
+					'form': SeasonForm,
 					'seasons': Show.get_season_count(show_id),
 				})
 
 			else:
+				context.update({
+					'form': SearchForm,
+				})
 				template = loader.get_template('find_show.html')
 
 		except Exception as e:
@@ -100,5 +106,6 @@ class APIView(View):
 				ret = redirect('shows',request=request,message='No results for: {}: {}'.format(querytype, queryvalue))
 		else:
 			logger.info('\tFORM INVALID')
+			logger.info('\t{}'.format(form.errors))
 
 		return ret
