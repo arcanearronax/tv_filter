@@ -21,12 +21,22 @@ class APIView(View):
 		}
 		template = loader.get_template('query.html')
 
-		# If we fail, generic 404 page
-		try:
-			if message and not show_id:
-				pass
-			if episode:
+		if message and not show_id:
+			pass
+		elif episode:
+			logger.info('GETTING EPISODE')
+			try:
 				episode_id = Episode.get_episode_id(show_id=show_id,season=season,ep_num=episode)
+			except IndexError as i:
+				logger.info('TESTING: {}'.format(i))
+				message = 'Episode does not exist: {}'.format(episode)
+				return self.get(request,show_id,season=season,message=message)
+			except Exception as e:
+				logger.info('Exception-here: {}'.format(e))
+				message = 'Episode does not exist: {}'.format(episode)
+				return self.get(request,show_id,season=season,message=message)
+			else:
+				logger.info('Continuing to process')
 				match = False
 				for term in REDACTED:
 					match = (Cast.get_match(episode_id,term) or match)
@@ -39,8 +49,22 @@ class APIView(View):
 					'match': match,
 				})
 
-			elif season:
-				#Episode.get_imdb_info(show_id,season)
+		elif season:
+			logger.info('GETTING SEASON')
+			if show_id in ('None',''):
+				logger.info('Show not provided')
+				message = 'show_id not provided'
+				return self.get(request,message=message)
+			
+			try:
+				episodes = Episode.get_count(show_id,season=season)
+				logger.info('GOT EPISODES')
+			except Exception:
+				message = 'Season does not exist: {}'.format(season)
+				logger.info('RETURNING SHOW')
+				return self.get(request,show_id=show_id,message=message)
+			else:
+				logger.info('RETURNING SEASON')
 				context.update({
 					'show_name': Show.get_show_name(show_id),
 					'form': EpisodeForm,
@@ -60,12 +84,10 @@ class APIView(View):
 					'form': SearchForm,
 				})
 				template = loader.get_template('find_show.html')
-
-		except Exception as e:
-			logger.info('APIView.get exception: {}'.format(e))
-			raise Http404('Could Not Find Resource')
 		else:
-			return HttpResponse(template.render(context,request))
+			template = loader.get_template('find_show.html')
+
+		return HttpResponse(template.render(context,request))
 
 
 	def post(self,request,show_id=None,season=None,episode=None):
