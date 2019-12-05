@@ -66,6 +66,7 @@ class Show(models.Model):
                 logger.info('\tcreated: {}'.format(show.show_id))
 
             ret = show.show_id
+            logger.info('\treturning: {}'.format(ret))
 
         return ret
 
@@ -84,12 +85,7 @@ class Episode(models.Model):
     @classmethod
     def get_episode_id(cls,show_id,season,ep_num):
         logger.info('Episode.get_episode_id: {} - {} - {}'.format(show_id,season,ep_num))
-        try:
-            ret = cls.objects.filter(show_id=show_id,season=season,ep_num=ep_num)[0].episode_id
-            logger.info('\tfound: {}'.format(ret))
-        except Exception as e:
-            logger.info('\texception: {}'.format(e))
-            ret = -1
+        ret = cls.objects.filter(show_id=show_id,season=season,ep_num=ep_num)[0].episode_id
 
         return ret
 
@@ -213,11 +209,14 @@ class Cast(models.Model):
     def get_cast(cls,episode_id):
         logger.info('Cast.get_cast: {}'.format(episode_id))
 
-        episode = Episode.objects.get(episode_id=episode_id)
-        ret = cls.objects.filter(episode_id=episode)
-
-        if (not len(ret)):
-            logger.info('\tfailed to retrieve')
+        try:
+            episode = Episode.objects.get(episode_id=episode_id)
+            logger.info('Got episode')
+            ret = cls.objects.filter(episode_id=episode)
+            logger.info('Got return')
+        except ProgrammingError as p:
+        #if (not len(ret)):
+            logger.info('\tProgramming Error: {}'.format(p))
 
             imdb_id = Episode.get_imdb_id_by_id(episode_id)
             logger.info('\timdb_id: {}'.format(imdb_id))
@@ -231,9 +230,10 @@ class Cast(models.Model):
                 cast_model.save()
                 logger.info('\tcast saved: {}'.format(cast_model.cast_id))
             ret = cls.objects.filter(episode_id=episode)
-
-        logger.info('\treturning: {}'.format(len(ret)))
-        return ret
+        else:
+            logger.info('\treturning: {}'.format(len(ret)))
+            return ret
+        raise Exception('WOOLOOLOO')
 
     @classmethod
     def get_match(cls,episode_id,term):
