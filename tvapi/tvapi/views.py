@@ -16,14 +16,14 @@ class APIView(View):
 		logger.info('APIView.get: {} - {} - {} - {}'.format(show_id,season,episode,message))
 
 		context = {
-			'form': BaseForm,
+			#'form': PostForm,
 			'message': message,
 		}
 		template = loader.get_template('query.html')
 
-		if message and not show_id:
-			pass
-		elif episode:
+		#if message and not show_id:
+		#	pass
+		if episode:
 			logger.info('GETTING EPISODE')
 			try:
 				episode_id = Episode.get_episode_id(show_id=show_id,season=season,ep_num=episode)
@@ -55,7 +55,7 @@ class APIView(View):
 				logger.info('Show not provided')
 				message = 'show_id not provided'
 				return self.get(request,message=message)
-			
+
 			try:
 				episodes = Episode.get_count(show_id,season=season)
 				logger.info('GOT EPISODES')
@@ -72,49 +72,48 @@ class APIView(View):
 					'episodes': Episode.get_count(show_id=show_id,season=season),
 				})
 
-			elif show_id:
-				context.update({
-					'show_name': Show.get_show_name(show_id),
-					'form': SeasonForm,
-					'seasons': Show.get_season_count(show_id),
-				})
+		elif show_id:
+			context.update({
+				'show_name': Show.get_show_name(show_id),
+				'form': SeasonForm,
+				'seasons': Show.get_season_count(show_id),
+			})
 
-			else:
-				context.update({
-					'form': SearchForm,
-				})
-				template = loader.get_template('find_show.html')
 		else:
+			context.update({
+				'form': SearchForm,
+			})
 			template = loader.get_template('find_show.html')
 
 		return HttpResponse(template.render(context,request))
 
-
+	# This should only redirect or return a get call
 	def post(self,request,show_id=None,season=None,episode=None):
 		logger.info('APIView.post - {} - {} - {}'.format(show_id,season,episode))
 		template = loader.get_template('query.html')
-		form = BaseForm(request.POST)
+		form = PostForm(request.POST)
 
 		if form.is_valid():
-			logger.info('\tform_validated')
+
 			querytype = form.cleaned_data['querytype']
 			queryvalue = form.cleaned_data['queryvalue']
-			logger.info('\tquerytype: {}'.format(querytype))
-			logger.info('\tqueryvalue: {}'.format(queryvalue))
+			logger.info('\tform_validated: {} - {}'.format(querytype,queryvalue))
 
 			ret = None
-			if querytype == 'find_show':
+			if querytype == 'search':
+
 				# Find search result or redirect with message
 				try:
 					show_id = Show.get_id_by_name(queryvalue)
+
 				except ResourceNotFound as s:
-					#logger.info('\tShowNotFound - {}'.format(s))
 					message = 'Failed to find: {}'.format(queryvalue)
 					ret = APIView.get(self,request,message=message)
+
 				except InvalidPage as n:
-					#logger.info('\tNoSearchResults - {}'.format(n))
 					message = 'No Results for {}'.format(queryvalue)
 					ret = APIView.get(self,request,message=message)
+
 				else:
 					ret = redirect('showView',show_id=show_id)
 
@@ -123,9 +122,10 @@ class APIView(View):
 
 			elif querytype == 'episode':
 				ret = redirect('episodeView',show_id=show_id, season=season,episode=queryvalue)
+
 			else:
 				#request.method = 'GET'
-				ret = redirect('shows',request=request,message='No results for: {}: {}'.format(querytype, queryvalue))
+				ret = APIView.get('shows',request=request,message='No results for: {}: {}'.format(querytype, queryvalue))
 		else:
 			logger.info('\tFORM INVALID')
 			logger.info('\t{}'.format(form.errors))

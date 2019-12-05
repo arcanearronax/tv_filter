@@ -3,40 +3,28 @@ import logging
 
 logger = logging.getLogger('apilog')
 
-class BaseForm(forms.Form):
-	querytype = forms.CharField(max_length=10)
+class PostForm(forms.Form):
+
+	choices = (
+		('search', 'Search by Name'),
+		('season', 'Season'),
+		('episode', 'Episode'),
+	)
+
+	querytype = forms.ChoiceField(required=True,choices=choices)
 	queryvalue = forms.CharField(max_length=50)
 
-class SearchForm(BaseForm):
-	def __init__(self,*args,**kwargs):
-
-		modifications = {
-			'widget': 'forms.HiddenInput()',
-			'required': 'False',
-			'initial': 'find_show'
-		}
-
-		super().__init__(*args,**kwargs)
-		for k,v in modifications.items():
-			eval("self.fields['querytype'].{}={}".format(k,v))
-		#self.fields['querytype'].widget=forms.HiddenInput()
-		#self.fields['querytype'].required=False
-		#self.fields['querytype'].initial='find_show'
-
-class ShowForm(BaseForm):
+class SearchForm(PostForm):
 	def __init__(self,*args,**kwargs):
 		super().__init__(*args,**kwargs)
-		#self.fields['querytype'].widget=forms.HiddenInput()
-		self.fields['querytype'].initial='show'
+		self.fields['querytype'].initial = self.choices[0]
 
-class SeasonForm(BaseForm):
+class SeasonForm(PostForm):
 	def __init__(self,*args,**kwargs):
 		super().__init__(*args,**kwargs)
-		#self.fields['querytype'].widget=forms.HiddenInput()
-		self.fields['querytype'].initial='season'
+		self.fields['querytype'].initial = self.choices[1]
 
-class EpisodeForm(BaseForm):
+class EpisodeForm(PostForm):
 	def __init__(self,*args,**kwargs):
 		super().__init__(*args,**kwargs)
-		#self.fields['querytype'].widget=forms.HiddenInput()
-		self.fields['querytype'].initial='episode'
+		self.fields['querytype'].initial = self.choices[2]

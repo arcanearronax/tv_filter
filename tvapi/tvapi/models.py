@@ -66,6 +66,7 @@ class Show(models.Model):
                 logger.info('\tcreated: {}'.format(show.show_id))
 
             ret = show.show_id
+            logger.info('\treturning: {}'.format(ret))
 
         return ret
 
