@@ -4,42 +4,51 @@ from django.template import loader
 from django.shortcuts import redirect
 from .forms import *
 from .models import *
+from .redactions import words
 import logging
 
 logger = logging.getLogger('apilog')
-
-REDACTED = ['Hamilton','hamilton']
 
 class APIView(View):
 
 	def get(self,request,show_id=None,season=None,episode=None,message=None):
 		logger.info('APIView.get: {} - {} - {} - {}'.format(show_id,season,episode,message))
 
+		# Let's get our default variables
 		context = {
-			#'form': PostForm,
 			'message': message,
 		}
 		template = loader.get_template('query.html')
 
-		#if message and not show_id:
-		#	pass
 		if episode:
 			logger.info('GETTING EPISODE')
-			try:
+
+			try: # Look for the episode
+				# We should probably just grab the episode as a var
 				episode_id = Episode.get_episode_id(show_id=show_id,season=season,ep_num=episode)
+
 			except IndexError as i:
 				logger.info('TESTING: {}'.format(i))
 				message = 'Episode does not exist: {}'.format(episode)
 				return self.get(request,show_id,season=season,message=message)
+
 			except Exception as e:
 				logger.info('Exception-here: {}'.format(e))
 				message = 'Episode does not exist: {}'.format(episode)
 				return self.get(request,show_id,season=season,message=message)
-			else:
+
+			else: # Found the episode, get the cast info
 				logger.info('Continuing to process')
 				match = False
-				for term in REDACTED:
-					match = (Cast.get_match(episode_id,term) or match)
+
+				try: # Loop over the cast, looking for a match
+					for term in words:
+						match = (Cast.get_match(episode_id,term) or match)
+
+				except CastException as c: # Oops
+					context.update({
+						'message': str(c),
+					})
 
 				context.update({
 					'show_name': Show.get_show_name(show_id),
@@ -49,14 +58,15 @@ class APIView(View):
 					'match': match,
 				})
 
-		elif season:
+		elif season: # Look for a season
 			logger.info('GETTING SEASON')
-			if show_id in ('None',''):
+
+			if show_id in ('None',''): # Minimal show_id validation
 				logger.info('Show not provided')
 				message = 'show_id not provided'
 				return self.get(request,message=message)
 
-			try:
+			try: # Get the episode count for the season
 				episodes = Episode.get_count(show_id,season=season)
 				logger.info('GOT EPISODES')
 			except Exception:
@@ -72,14 +82,14 @@ class APIView(View):
 					'episodes': Episode.get_count(show_id=show_id,season=season),
 				})
 
-		elif show_id:
+		elif show_id: # Look for a show by id
 			context.update({
 				'show_name': Show.get_show_name(show_id),
 				'form': SeasonForm,
 				'seasons': Show.get_season_count(show_id),
 			})
 
-		else:
+		else: # Look for a show by show name
 			context.update({
 				'form': SearchForm,
 			})

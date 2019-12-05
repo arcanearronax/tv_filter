@@ -21,7 +21,9 @@
 
 	{% endif %}
 
-	{% if match %}
+	{% if match_error %}
+		<p style="color:red">{{ match_error }}</p>
+	{% elif match %}
 		<p>MATCH FOUND</p>
 	{% else %}
 		<p>NO MATCH</p>

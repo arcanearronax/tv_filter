@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 from .api_service import *
 
 import logging
@@ -38,13 +39,15 @@ class Show(models.Model):
         logger.info('Show.get_show_id_by_name: {}'.format(show_search))
 
         ret = None
-        try:
-            # Return the show from db if we have a perfect match
-            ret = cls.objects.get(tmdb_name=show_search)[0].show_id
-            logger.info('\tperfect match found: {}'.format(show_id))
-        except Exception as e:
-            # Search for the show name via API
+        try: # Return the show from db if we have a perfect match
+            ret = cls.objects.get(tmdb_name=show_search).show_id
+            logger.info('\tperfect match found: {}'.format(ret))
+
+        except Exception as e: # Search for the show name via API
+            logger.info('\tException: {} - {}'.format(e.__class__.__name__, e))
             logger.info('\tlooking for close match')
+
+            # Retrieve TMDB and IMDB info
             showinfo = cls.api_service.get_show_tmdb_info(show_search)
             show_imdb_info = cls.api_service.get_show_imdb_info(show_search)
 
@@ -55,12 +58,11 @@ class Show(models.Model):
             imdb_id = show_imdb_info['imdb_id']
             imdb_name = show_imdb_info['imdb_name']
 
-            try:
-                # Search db for a perfect match to name from API
+            try: # Search db for a perfect match to name from API
                 show = cls.objects.filter(tmdb_id=tmdb_id,tmdb_name=tmdb_name)[0]
                 logger.info('\tfound suspected match: {}'.format(show.show_id))
-            except Exception:
-                # Create a new db for the title from the API
+
+            except Exception: # Create a new db for the title from the API
                 show = cls(tmdb_id=tmdb_id,tmdb_name=tmdb_name,seasons=seasons,imdb_id=imdb_id,imdb_name=imdb_name)
                 show.save()
                 logger.info('\tcreated: {}'.format(show.show_id))
@@ -106,14 +108,21 @@ class Episode(models.Model):
             except Exception as e:
                 logger.info('\tFailed to retrieve IMDB INFO: {}'.format(ep['ep_num']))
                 logger.info('\texception: {}'.format(e))
-                pass
+
             ep_model.imdb_id = ep['imdb_id']
             logger.info('\t\timdb_id={}'.format(ep_model.imdb_id))
             ep_model.imdb_name = ep['imdb_name']
             logger.info('\t\timdb_name={}'.format(ep_model.imdb_name))
-            ep_model.full_clean()
-            ep_model.save()
-            logger.info('\tepisode saved: {}'.format(ep_model.episode_id))
+
+            try:
+                ep_model.full_clean()
+            except ValidationError as v:
+                logger.info('\tValidationError: {}'.format(v))
+            except Exception as e:
+                logger.info('\tException: {}'.format(e))
+            else:
+                ep_model.save()
+                logger.info('\tepisode saved: {}'.format(ep_model.episode_id))
 
     @classmethod
     def get_count(cls,show_id,season):
@@ -159,9 +168,16 @@ class Episode(models.Model):
                 ep_model.imdb_id = ep['imdb_id']
                 ep_model.imdb_name = ep['imdb_name']
                 logger.info('ep_model: {}'.format(ep_model))
-                ep_model.full_clean()
-                ep_model.save()
-                logger.info('\tepisode saved: {}'.format(ep_model.episode_id))
+
+                try:
+                    ep_model.full_clean()
+                except ValidationError as v:
+                    logger.info('\tValidationError: {}'.format(v))
+                except Exception as e:
+                    logger.info('\tException: {}'.format(e))
+                else:
+                    ep_model.save()
+                    logger.info('\tepisode saved: {}'.format(ep_model.episode_id))
 
             ret = cls.objects.filter(show_id=show_id,season=season,ep_num=ep_num)[0].imdb_name
 
@@ -209,31 +225,46 @@ class Cast(models.Model):
     def get_cast(cls,episode_id):
         logger.info('Cast.get_cast: {}'.format(episode_id))
 
-        try:
-            episode = Episode.objects.get(episode_id=episode_id)
-            logger.info('Got episode')
-            ret = cls.objects.filter(episode_id=episode)
-            logger.info('Got return')
-        except ProgrammingError as p:
-        #if (not len(ret)):
-            logger.info('\tProgramming Error: {}'.format(p))
+        episode = Episode.objects.get(episode_id=episode_id)
+        ret = cls.objects.filter(episode_id=episode)
 
-            imdb_id = Episode.get_imdb_id_by_id(episode_id)
-            logger.info('\timdb_id: {}'.format(imdb_id))
+        # If we get a 0 length return, fetch from the API
+        castcount = len(ret)
+        if (not castcount):
+            logger.info('\tcastcount: {}'.format(castcount))
 
-            ep_cast = cls.api_service.get_episode_cast(imdb_id)
-            logger.info('\tcast_len: {}'.format(len(ep_cast)))
+            try:
+                imdb_id = Episode.get_imdb_id_by_id(episode_id)
+                ep_cast = cls.api_service.get_episode_cast(imdb_id)
+            except ElementNotFound as e:
+                raise CastException('Unable to retrieve episode cast')
+
+            # Build the cast entries from the API request
             for cast in ep_cast:
                 cast_model = cls(actor=cast['actor'],character=cast['character'],episode_id=episode)
                 logger.info('Got model: {}'.format(cast_model))
-                cast_model.full_clean()
-                cast_model.save()
-                logger.info('\tcast saved: {}'.format(cast_model.cast_id))
+
+                # In case the actor or character exceed DB limits
+                try:
+                    cast_model.full_clean()
+                except ValidationError as v:
+                    logger.info('\tValidationError: {}'.format(v))
+                    logger.info('\tType: {}'.format(v.__class__.__name__))
+                    logger.info('\tactor: {}'.format(cast_model.actor))
+                    logger.info('\tcharacter: {}'.format(cast_model.character))
+                except Exception as e:
+                    logger.info('\tException: {}'.format(e))
+                    logger.info('\tType: {}'.format(e.__class__.__name__))
+                    logger.info('\tactor: {}'.format(cast_model.actor))
+                    logger.info('\tcharacter: {}'.format(cast_model.character))
+                else:
+                    cast_model.save()
+                    logger.info('\tcast saved: {}'.format(cast_model.cast_id))
+
             ret = cls.objects.filter(episode_id=episode)
-        else:
-            logger.info('\treturning: {}'.format(len(ret)))
-            return ret
-        raise Exception('WOOLOOLOO')
+
+        logger.info('\treturning: {}'.format(len(ret)))
+        return ret
 
     @classmethod
     def get_match(cls,episode_id,term):

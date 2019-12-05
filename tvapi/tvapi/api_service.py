@@ -181,10 +181,16 @@ class APIService():
 		req = requests.get(url)
 		soup = BeautifulSoup(req.content,'html.parser')
 		cast_table = soup.find('table', {'class':'cast_list'})
-		cast_odd = cast_table.find_all('tr', {'class':'odd'})
-		cast_even = cast_table.find_all('tr', {'class':'even'})
-		cast_full = cast_odd + cast_even
-		logger.info('\tcast_full len: {}'.format(len(cast_full)))
+
+		try:
+			cast_odd = cast_table.find_all('tr', {'class':'odd'})
+			cast_even = cast_table.find_all('tr', {'class':'even'})
+		except AttributeError as a:
+			logger.info('\tAttributeError: {}'.format(a))
+			raise ElementNotFound('Missing Cast Rows')
+		else:
+			cast_full = cast_odd + cast_even
+			logger.info('\tcast_full len: {}'.format(len(cast_full)))
 
 		episode_cast = []
 		for cast in cast_full:
@@ -209,6 +215,10 @@ class APIException(Exception):
 
 class ResourceNotFound(APIException):
 	"""Use this is we fail to find a resource we're looking for"""
+	pass
+
+class ElementNotFound(APIException):
+	"""Use this is we get a page successfully, but we're missing something."""
 	pass
 
 class InvalidPage(APIException):
