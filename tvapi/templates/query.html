@@ -4,7 +4,7 @@
 	<h1>{{ show_name }}</h1>
 
 	{% if message %}
-		<h3 style="color:red">{{ message }}</h3>
+		<h3 class="w3-red">{{ message }}</h3>
 	{% endif %}
 
 	{% if seasons %}
@@ -22,7 +22,7 @@
 	{% endif %}
 
 	{% if match_error %}
-		<p style="color:red">{{ match_error }}</p>
+		<p class="w3-red">{{ match_error }}</p>
 	{% elif match %}
 		<p>MATCH FOUND</p>
 	{% else %}
@@ -43,6 +43,6 @@
 				<p>none</p>
 			{% endfor %}
 		</table>
-		<input type="submit" value="Submit Button" name="BaseForm" id="SubmitButton">
+		<input type="submit" class="w3-button w3-round-xlarge w3-light-grey" value="Search" name="BaseForm" id="SubmitButton">
 	</form>
 {% endblock %}
