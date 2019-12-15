@@ -36,6 +36,25 @@
 			padding-bottom: 10px;
 		}
 
+		#SubmitButton1 {
+			margin-top: 20px;
+		}
+
+		.form-spacing {
+			margin-top: 1em;
+			margin-bottom: 1em;
+		}
+
+		div.warning {
+			width: 50%;
+			padding: 1em;
+		}
+
+		p.warning {
+			font-weight: bold;
+			font-size: 2em;
+		}
+
 	</style>
 
 	<head>
@@ -45,12 +64,27 @@
 	<body class="w3-black">
 
 		<div class="w3-container">
-			{% block page_title %}
+
+			<h1>{{ page_h1 }}</h1>
+
+			{% block season_info %}
+			{% endblock %}
+
+			{% block episode_info %}
+			{% endblock %}
+
+			{% block warning_block %}
 			{% endblock %}
 
 			<div class="w3-text-grey">
-				{% block temp_form %}
-				{% endblock %}
+				<form method="POST">
+					{% csrf_token %}
+					<table>
+						{% block form_table %}
+						{% endblock %}
+					</table>
+					<input type="submit" class="w3-button w3-round-xlarge w3-light-grey form-spacing" value="Search" name="BaseForm" id="SubmitButton">
+				</form>
 			</div>
 
 		</div>

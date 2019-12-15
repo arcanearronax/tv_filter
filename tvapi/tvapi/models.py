@@ -36,7 +36,7 @@ class Show(models.Model):
 
     @classmethod
     def get_id_by_name(cls,show_search):
-        logger.info('Show.get_show_id_by_name: {}'.format(show_search))
+        logger.info('Show.get_id_by_name: {}'.format(show_search))
 
         ret = None
         try: # Return the show from db if we have a perfect match

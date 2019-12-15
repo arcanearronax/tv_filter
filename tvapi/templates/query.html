@@ -1,48 +1,57 @@
 {% extends 'base.html' %}
 
-{% block page_title %}
-	<h1>{{ show_name }}</h1>
-
-	{% if message %}
-		<h3 class="w3-red">{{ message }}</h3>
+{% block page_top %}
+	{% if episodes %}
+		<h5>Episodes: {{ episodes }}</h5>
+	{% else %}
+		<h5>Episode: {{ episode }}</h5>
 	{% endif %}
 
-	{% if seasons %}
-		<h5>Seasons: {{ seasons }}</h5>
-	{% else %}
 
+{% endblock %}
+
+{% block season_info %}
+	{% if season %}
 		<h5>Season: {{ season }}</h5>
-
-		{% if episodes %}
-			<h5>Episodes: {{ episodes }}</h5>
-		{% else %}
-			<h5>Episode: {{ episode }}</h5>
-		{% endif %}
-
+	{% elif seasons %}
+		<h5>Seasons: {{ seasons }}</h5>
 	{% endif %}
+{% endblock %}
 
-	{% if match_error %}
-		<p class="w3-red">{{ match_error }}</p>
-	{% elif match %}
-		<p>MATCH FOUND</p>
-	{% else %}
-		<p>NO MATCH</p>
+{% block episode_info %}
+
+	{% if episode %}
+		<h5>Episode: {{ episode }}</h5>
+	{% elif episodes %}
+		<h5>Episodes: {{ episodes }}</h5>
 	{% endif %}
 
 {% endblock %}
 
-{% block temp_form %}
-	<form method="POST">
-		{% csrf_token %}
-		<table>
-			{% for field in form %}
-				<tr>
-					<td>{{ field.label_tag }} {{ field }}</td>
-				</tr>
-			{% empty %}
-				<p>none</p>
-			{% endfor %}
-		</table>
-		<input type="submit" class="w3-button w3-round-xlarge w3-light-grey" value="Search" name="BaseForm" id="SubmitButton">
-	</form>
+{% block warning_block %}
+
+	{% if match_error %}
+		<div class="warning w3-pale-red">
+			<p class="warning">{{ match_error }}</p>
+		</div>
+	{% elif warning %}
+		<div class="warning w3-pale-yellow">
+			<p class="warning">{{ warning }}</p>
+		</div>
+	{% elif message %}
+		<div class="warning w3-pale-blue">
+			<p class="warning">{{ message }}</p>
+		</div>
+	{% endif %}
+
+{% endblock %}
+
+{% block form_table %}
+	{% for field in form %}
+		<tr>
+			<td>{{ field.label_tag }} {{ field }}</td>
+		</tr>
+	{% empty %}
+		<p>none</p>
+	{% endfor %}
 {% endblock %}

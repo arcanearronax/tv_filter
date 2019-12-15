@@ -11,8 +11,8 @@ class PostForm(forms.Form):
 		('episode', 'Episode'),
 	)
 
-	querytype = forms.ChoiceField(required=True,choices=choices,widget=forms.Select(attrs={'class':'w3-input w3-round w3-light-grey'}))
-	queryvalue = forms.CharField(max_length=50,widget=forms.TextInput(attrs={'class':'w3-input w3-round w3-light-grey'}))
+	querytype = forms.ChoiceField(required=True,choices=choices,widget=forms.Select(attrs={'class':'w3-input w3-round w3-light-grey form-spacing'}))
+	queryvalue = forms.CharField(max_length=50,widget=forms.TextInput(attrs={'class':'w3-input w3-round w3-light-grey form-spacing'}))
 	#testing = forms.TextInput()
 
 class SearchForm(PostForm):

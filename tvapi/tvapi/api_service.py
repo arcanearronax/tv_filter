@@ -133,7 +133,7 @@ class APIService():
 		page = requests.get(url)
 
 		if (page.status_code != 200):
-			raise InvalidPage('Status code: {}'.format(page.status_code))
+			raise InvalidPage('Failed to retrieve page.',statuscode=page.status_code)
 
 		soup = BeautifulSoup(page.content, 'html.parser')
 		eps_div_odd = soup.find_all('div',{'class':'list_item odd'})
@@ -208,19 +208,30 @@ class APIService():
 class APIException(Exception):
 	"""Base class for API exceptions"""
 
-	def __init__(self,*args,**kwargs):
+	def __init__(self,text):
+		logger.info('{}: {}'.format(self.__class__.__name__, text))
 		#logger.info('{}: {}'.format(self.__class__.__name__,' - '.join(args)))
-		print('{}: {}'.format(self.__class__.__name__,' - '.join(args)))
-		super().__init__(args,kwargs)
+		super().__init__(text)
+		self.text = text
 
 class ResourceNotFound(APIException):
 	"""Use this is we fail to find a resource we're looking for"""
-	pass
+	def __init__(self,text,resource=None):
+		super().__init__(text)
+		self.resource = resource
+		logger.info('\tresource: {}'.format(self.resource))
 
 class ElementNotFound(APIException):
 	"""Use this is we get a page successfully, but we're missing something."""
-	pass
+	def __init__(self,text,element=None):
+		super().__init__(text)
+		self.element = element
+		logger.info('\telement: {}'.format(self.element))
 
 class InvalidPage(APIException):
 	"""Use this is we have a failure retrieving source pages"""
+	def __init__(self,text,statuscode=None):
+		super().__init__(text)
+		self.statuscode = statuscode
+		logger.info('\tstatuscode: {}'.format(self.statuscode))
 	pass

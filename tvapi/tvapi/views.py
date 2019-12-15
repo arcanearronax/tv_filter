@@ -1,7 +1,7 @@
 from django.http import HttpResponse, Http404, HttpResponseRedirect
 from django.views import View
 from django.template import loader
-from django.shortcuts import redirect
+from django.shortcuts import redirect, reverse
 from .forms import *
 from .models import *
 from .redactions import words
@@ -11,90 +11,260 @@ logger = logging.getLogger('apilog')
 
 class APIView(View):
 
-	def get(self,request,show_id=None,season=None,episode=None,message=None):
-		logger.info('APIView.get: {} - {} - {} - {}'.format(show_id,season,episode,message))
+	# Decorator to validate inputs
+	def validate_inputs(func):
+		def wrapper(*args,**kwargs):
+			logger.info('validating inputs')
 
-		# Let's get our default variables
-		context = {
-			'message': message,
-		}
-		template = loader.get_template('query.html')
+			logger.info('VALIDATE_ARGS: {}'.format(len(args)))
 
-		if episode:
-			logger.info('GETTING EPISODE')
+			show_id = args[2]
+			season = args[3]
+			episode = args[4]
 
-			try: # Look for the episode
-				# We should probably just grab the episode as a var
-				episode_id = Episode.get_episode_id(show_id=show_id,season=season,ep_num=episode)
+			# Raise an error or passes
+			def validate_show_id(show_id):
+				logger.info('\tvalidate_show_id: {}'.format(show_id))
+				try:
+					int(show_id)
+					logger.info('\tvalid show_id')
+					return True
+				except ValueError as v:
+					logger.info('\tvalue_error: {}'.format(v))
+					raise InvalidShowId(value=show_id,message='Not an int - show_id')
+				except TypeError as t:
+					logger.info('\ttype_error: {}'.format(t))
+					raise InvalidShowId(value=show_id,message='Not an int - show_id')
 
-			except IndexError as i:
-				logger.info('TESTING: {}'.format(i))
-				message = 'Episode does not exist: {}'.format(episode)
-				return self.get(request,show_id,season=season,message=message)
+				return False
 
-			except Exception as e:
-				logger.info('Exception-here: {}'.format(e))
-				message = 'Episode does not exist: {}'.format(episode)
-				return self.get(request,show_id,season=season,message=message)
+			def validate_season(season):
+				try:
+					int(season)
+					return True
+				except ValueError:
+					raise InvalidSeason(value=season,message='Not an int - season')
 
-			else: # Found the episode, get the cast info
-				logger.info('Continuing to process')
-				match = False
+				return False
 
-				try: # Loop over the cast, looking for a match
-					for term in words:
-						match = (Cast.get_match(episode_id,term) or match)
+			def validate_episode(episode):
+				try:
+					int(episode)
+					return True
+				except ValueError:
+					raise InvalidInput(value=episode,message='Not an int - show_id')
 
-				except CastException as c: # Oops
+				return False
+
+			# Make sure we aren't missing an arg
+			if (show_id in ('None',None)) and (season not in ('None',None) or episode not in ('None',None)):
+				raise InvalidShowId(value=show_id,message='Invalid show_id')
+
+			elif (season in ('None',None)) and (episode not in ('None',None)):
+				raise InvalidSeason(value=season,message='Invalid show_id')
+
+			# Make sure the values are valid ints
+			valid = True
+			if (show_id not in ('None',None)):
+				if (not validate_show_id(show_id)):
+					raise InvalidShowId(value=show_id,message='Invalid show_id')
+			elif (season not in ('None',None)):
+				if (not validate_season(show_id)):
+					raise InvalidSeason(value=season,message='Invalid season')
+			elif (episode not in ('None',None)):
+				if (not validate_episode(show_id)):
+					raise InvalidEpisode(value=episode,message='Invalid episode')
+
+			return func(*args,**kwargs)
+
+		return wrapper
+
+	@validate_inputs
+	def get_episode_page(self,request,show_id,season,episode,message=None,warning=None,error=None):
+		logger.info('APIView.get_episode_page: {} - {} - {} - {} - {} - {}'.format(show_id,season,episode,message,warning,error))
+
+		context = {}
+
+		try: # Look for the episode
+			# We should probably just grab the episode as a var
+			episode_id = Episode.get_episode_id(show_id=show_id,season=season,ep_num=episode)
+
+		except IndexError as i:
+			logger.info('IndexError: {}'.format(i))
+			warning = 'Episode does not exist: {}'.format(episode)
+			#return self.get(request,show_id,season=season,warning=message)
+			show_name = Show.get_show_name(show_id)
+			context = {
+				'show_name': show_name,
+				'page_h1': show_name,
+				'form': EpisodeForm,
+				'season': season,
+				'warning': warning,
+			}
+
+		except ValueError as v:
+			logger.info('ValueError: {}'.format(v))
+			warning = 'Episode is invalid: {}'.format(episode)
+
+			show_name = Show.get_show_name(show_id)
+			context = {
+				'show_name': show_name,
+				'page_h1': show_name,
+				'form': EpisodeForm,
+				'season': season,
+				'warning': warning,
+			}
+
+			#return self.get(request,show_id,season=season,warning=warning)
+
+		except Exception as e:
+			logger.info('Exception-here: {}'.format(e.__class__.__name__))
+			message = 'Unknown Exception: {}'.format(episode)
+
+			show_name = Show.get_show_name(show_id)
+			context = {
+				'show_name': show_name,
+				'page_h1': show_name,
+				'form': EpisodeForm,
+				'season': season,
+				'warning': warning,
+			}
+
+			#return self.get(request,show_id,season=season,message=message)
+
+		else: # Found the episode, get the cast info
+			logger.info('Continuing to process')
+			match = False
+
+			try: # Loop over the cast, looking for a match
+				for term in words:
+					match = (Cast.get_match(episode_id,term) or match)
+
+				if match:
 					context.update({
-						'message': str(c),
+						'message': 'Match Found',
+					})
+				else:
+					context.update({
+						'message': 'No Match Found',
 					})
 
+			except CastException as c: # We fail to retrieve ep cast
 				context.update({
-					'show_name': Show.get_show_name(show_id),
+					'match_error': str(c),
+				})
+
+			try:
+				show_name = Show.get_show_name(show_id)
+				context.update({
+					'show_name': show_name,
 					'form': EpisodeForm,
 					'season': season,
 					'episode': '{} - {}'.format(episode, Episode.get_name(show_id=show_id,season=season,ep_num=episode)),
 					'match': match,
+					'page_h1': show_name,
 				})
-
-		elif season: # Look for a season
-			logger.info('GETTING SEASON')
-
-			if show_id in ('None',''): # Minimal show_id validation
-				logger.info('Show not provided')
-				message = 'show_id not provided'
-				return self.get(request,message=message)
-
-			try: # Get the episode count for the season
-				episodes = Episode.get_count(show_id,season=season)
-				logger.info('GOT EPISODES')
-			except Exception:
-				message = 'Season does not exist: {}'.format(season)
-				logger.info('RETURNING SHOW')
-				return self.get(request,show_id=show_id,message=message)
-			else:
-				logger.info('RETURNING SEASON')
+			except InvalidPage as i:
+				show_name = Show.get_show_name(show_id)
 				context.update({
-					'show_name': Show.get_show_name(show_id),
+					'show_name': show_name,
 					'form': EpisodeForm,
 					'season': season,
-					'episodes': Episode.get_count(show_id=show_id,season=season),
+					'warning': i,
+					'match': match,
+					'page_h1': show_name,
 				})
 
-		elif show_id: # Look for a show by id
-			context.update({
-				'show_name': Show.get_show_name(show_id),
+		return context
+
+	@validate_inputs
+	def get_season_page(self,request,show_id,season,message=None,warning=None,error=None):
+		logger.info('APIView.get_show_page: {} - {} - {} - {} - {}'.format(show_id,season,message,warning,error))
+
+		try: # Get the episode count for the season
+			episodes = Episode.get_count(show_id,season=season)
+			logger.info('GOT EPISODES')
+
+		except Exception as e: # Failed to retrieve episodes
+			warning = 'Season does not exist: {}'.format(season)
+			logger.info('RETURNING SHOW: {}'.format(e.__class__.__name__))
+
+			show_name = Show.get_show_name(show_id)
+			context = {
+				'message': message,
+				'warning': warning,
+				'error': error,
+				'show_name': show_name,
 				'form': SeasonForm,
-				'seasons': Show.get_season_count(show_id),
-			})
+				#'episodes': Episode.get_count(show_id=show_id,season=season),
+				'page_h1': show_name,
+			}
+
+		else:
+			logger.info('RETURNING SEASON')
+			show_name = Show.get_show_name(show_id)
+			context = {
+				'message': message,
+				'warning': warning,
+				'error': error,
+				'show_name': show_name,
+				'form': EpisodeForm,
+				'season': season,
+				'episodes': episodes,
+				'page_h1': show_name,
+			}
+
+		return context
+
+	@validate_inputs
+	def get_show_page(self,request,show_id,message=None,warning=None,error=None):
+		logger.info('APIView.get_show_page: {} - {} - {} - {}'.format(show_id,message,warning,error))
+
+		show_name = Show.get_show_name(show_id)
+		context = {
+			'message': message,
+			'warning': warning,
+			'error': error,
+			'show_name': show_name,
+			'form': SeasonForm,
+			'seasons': Show.get_season_count(show_id),
+			'page_h1': show_name,
+		}
+
+		return context
+
+	def get_search_page(self,request,message=None,warning=None,error=None):
+		logger.info('APIView.get_show: {} - {} - {}'.format(message,warning,error))
+		context = {
+			'message': message,
+			'warning': warning,
+			'error': error,
+			'form': SearchForm,
+			'page_h1': 'Search for a show'
+		}
+
+		return context
+
+	def get(self,request,show_id=None,season=None,episode=None,message=None,warning=None,error=None):
+		logger.info('APIView.get: {} - {} - {} - {} - {} - {}'.format(show_id,season,episode,message,warning,error))
+
+		if episode: # Look for an episode
+			context = self.get_episode_page(request,show_id,season,episode,message,warning,error)
+
+		elif season: # Look for a season
+			context = self.get_season_page(request,show_id,season,message,warning,error)
+
+		elif show_id: # Look for a show by id
+			context = self.get_show_page(request,show_id,message,warning,error)
 
 		else: # Look for a show by show name
-			context.update({
-				'form': SearchForm,
-			})
-			template = loader.get_template('find_show.html')
+			try:
+				context = self.get_search_page(request,message,warning,error)
+			except InvalidShowId as i:
+				logger.info('\tshow_id not found:{}'.format(show_id))
+				context = self.get_search_page()
 
+		template = loader.get_template('query.html')
 		return HttpResponse(template.render(context,request))
 
 	# This should only redirect or return a get call
@@ -117,8 +287,8 @@ class APIView(View):
 					show_id = Show.get_id_by_name(queryvalue)
 
 				except ResourceNotFound as s:
-					message = 'Failed to find: {}'.format(queryvalue)
-					ret = APIView.get(self,request,message=message)
+					warning = 'Failed to find: {}'.format(queryvalue)
+					ret = APIView.get(self,request,warning=warning)
 
 				except InvalidPage as n:
 					message = 'No Results for {}'.format(queryvalue)
@@ -141,3 +311,25 @@ class APIView(View):
 			logger.info('\t{}'.format(form.errors))
 
 		return ret
+
+class InvalidInput(Exception):
+	def __init__(self,message=None,field=None,value=None):
+		super().__init__(message)
+		self.field = field
+		self.value = value
+		self.message = message
+
+	def __str__(self):
+		return self.message
+
+class InvalidEpisode(InvalidInput):
+	def __init__(self,message=None,value=None):
+		super().__init__(field='episode',value=value,message=message)
+
+class InvalidSeason(InvalidInput):
+	def __init__(self,message=None,value=None):
+		super().__init__(field='season',value=value,message=message)
+
+class InvalidShowId(InvalidInput):
+	def __init__(self,message=None,value=None):
+		super().__init__(field='show_id',value=value,message=message)
