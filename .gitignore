@@ -3,6 +3,7 @@ tvapi/logs/*
 tvapi/tvapi/migrations
 tvapi/tvapi/*.sock
 tvapi/tvapi/wsgi.py
+tvapi/tvapi/redactions.py
 
 *.log
 *.pyc
