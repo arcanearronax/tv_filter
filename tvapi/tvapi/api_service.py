@@ -1,3 +1,9 @@
+'''
+This is a custom built web scraper/api client which communicates with IMDB and
+TMDB in order to gather media data.
+
+This is being modified to use threaded logic to pull data.
+'''
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -18,7 +24,69 @@ logger = logging.getLogger('apilog')
 class APIService():
 
 	@classmethod
+	def get_imdb_title_search(cls,show_search):
+		'''
+		This is used to request the show search page from IMDB website for a
+		given search. This will parse through the returned page and return an
+		array containing dictionaries with information about the matches found.
+		'''
+		# Build the URL and get the IMDB page.
+		url = 'https://www.imdb.com/find?q={}&s=tt'.format(url_encode(show_search))
+		page = requests.get(url)
+
+		# Get the table with the IMDB title data
+		soup = BeautifulSoup(page.content,'html.parser')
+		find_list_table = soup.find('table', {'class':'findList'})
+
+		# Iterate over the rows with title information and build the array
+		search_results = []
+		for row in find_list_table.find_all():
+			result_text = row.find('td',{'class':'result_text'})
+			result_a = result_text.find('a')
+
+			result_info = {}
+			result_info['imdb_id'] = re.search('tt[\d]{6}', result_a['href']).group(0)
+			result_info['imdb_name'] = result_a.text
+			result_info['year'] = 0 # Leaving this set to a default for now
+
+			search_results.append(result_info)
+
+		return search_results
+
+	@classmethod
+	def get_imdb_seasons(cls, imdb_id):
+		'''
+		This is used to request the episodes page from IMDB website for a given
+		IMDB ID. This will parse through the returned page and return an array
+		containing dictionaries with season information for the show.
+		'''
+
+		# Build the URL and get the IMDB page.
+		url = 'https://www.imdb.com/title/{}/episodes'.format(imdb_id)
+		page = requests.get(url)
+
+		# Get the menu with the season list
+		soup = BeautifulSoup(page.content,'html.parser')
+		season_menu = soup.find('select',{'id':'bySeason'})
+
+		# Iterate over the values in the season menu
+		show_seasons = []
+		for season_option in season_menu.find_all('option'):
+			season = {}
+			season['imdb_id'] = imdb_id
+			season['season_id'] = re.search('[\w]+',season_option.text).group(0)
+			show_seasons.append(season)
+
+		return show_seasons
+
+	@classmethod
 	def get_show_tmdb_info(cls,show_search):
+		'''
+		This is used to initiate a call to the TMDB API which searches for media
+		which include a given search name and then initiates a second call to
+		the TMDB API to pull data for the closest name matchself.
+		This will return a dictionary with information about the show.
+		'''
 		logger.info('APIService.get_show_tmdb_info: {}'.format(show_search))
 
 		# First search for the show
@@ -58,6 +126,11 @@ class APIService():
 
 	@classmethod
 	def get_episodes(cls,tmdb_id,season):
+		'''
+		This is used to initiate a call to the TMDB API which returns a list of
+		episodes for a season of a given TMDB show ID. This will return an
+		array which contains dictionaries with episode data.
+		'''
 		logger.info('APIService.get_episodes: {} - {}'.format(tmdb_id,season))
 
 		url = '{}tv/{}/season/{}?api_key={}&language={}'.format(tmdb_uri, tmdb_id, season, api_key, language)
@@ -89,6 +162,10 @@ class APIService():
 	# Need to rebuild this to pull individal episode's imdb info
 	@classmethod
 	def get_show_imdb_info(cls,show_search):
+		'''
+		This submits a request to the TMDB API to search for a given show name
+		and returns a dictionary which contains IMDB data for the show.
+		'''
 		logger.info('APIService.get_episode_imdb_info: {}'.format(show_search))
 
 		url = '{}'.format('https://movie-database-imdb-alternative.p.rapidapi.com/')
@@ -125,6 +202,11 @@ class APIService():
 
 	@classmethod
 	def get_episodes_imdb_info(cls,imdb_id,season):
+		'''
+		This requests the season page from IMDB's website for a given show and
+		season then returns an array with dictionaries containing IMDB info for
+		the episodes.
+		'''
 		logger.info('APIService.get_episodes_imdb_info: {} - {}'.format(imdb_id,season))
 
 		url = 'https://www.imdb.com/title/{}/episodes?season={}'.format(imdb_id,season)
@@ -173,6 +255,11 @@ class APIService():
 
 	@classmethod
 	def get_episode_cast(cls,ep_imdb_id):
+		'''
+		This requests a given episode's cast page from the IMDB website. It
+		returns an array containing dictonaries with an actor's and character's
+		name.
+		'''
 		logger.info('APIService.get_episode_cast: {}'.format(ep_imdb_id))
 
 		url = 'https://www.imdb.com/title/{}/fullcredits'.format(ep_imdb_id)
