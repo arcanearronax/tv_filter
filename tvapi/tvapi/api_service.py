@@ -10,6 +10,7 @@ import json
 import urllib.parse
 import re
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 tmdb_uri = 'https://api.themoviedb.org/3/'
 api_key = 'c5b9f96015c7b3e771a36a2b43159f6d'
@@ -78,6 +79,169 @@ class APIService():
 			show_seasons.append(season)
 
 		return show_seasons
+
+	@classmethod
+	def get_imdb_season(cls, show_id, season_num):
+		'''
+		This is used to request the season page from IMDB website for a given
+		IMDB show id and season number. This will return a dictionary with
+		information about the season.
+		'''
+
+		# Build the URL and get the IMDB page.
+		url = 'https://www.imdb.com/title/{}/episodes?season={}'.format(show_id, season_num)
+		page = requests.get(url)
+
+		# Get the menu with the season list
+		soup = BeautifulSoup(page.content,'html.parser')
+		eps_div_odd = soup.find_all('div',{'class':'list_item odd'})
+		eps_div_even = soup.find_all('div',{'class':'list_item even'})
+		eps_div_full = eps_div_odd + eps_div_even
+
+		# Iterate over the episode divs
+		episodes = []
+		max_ep_count = 0
+		for ep in eps_div_full:
+			# Get the image div
+			image_div = ep.find('div',{'class':'image'})
+			a_elem = image_div.find('a')
+
+			a_div = a_elem.find('div')
+			div_cont = a_div.find('div').text
+			imdb_name = a_elem['title']
+
+			ep_num = int(re.search('[\d]*$',div_cont).group(0))
+
+			hover_div = a_elem.find('div',{'class':'hover-over-image'})
+			ep_imdb_id = hover_div['data-const']
+
+			logger.info('\tepisode: {} - {} - {}'.format(ep_num,ep_imdb_id,imdb_name))
+
+			episodes.append({
+				'ep_num': ep_num,
+				'imdb_id': ep_imdb_id,
+				'imdb_name': imdb_name,
+			})
+
+			if (ep_num > max_ep_count):
+				max_ep_count = ep_num
+
+		# Return the season dictionary
+		return {
+			'season_num': season_num,
+			'ep_count': max_ep_count,
+			'ep_list': episodes,
+		}
+
+	@classmethod
+	def get_imdb_episode(cls,episode_id):
+		'''
+		This is used to request the episode page from IMDB website for a given
+		IMDB show id, season number, and episode number. It returns a dictionary
+		with information about the episode.
+		'''
+		logger.info('get_imdb_episode - {}'.format(episode_id))
+
+		# Request the IMDB page
+		url = 'https://www.imdb.com/title/{}'.format(episode_id)
+		page = requests.get(url)
+
+		# Get the menu with the season list
+		soup = BeautifulSoup(page.content,'html.parser')
+		heading_text = soup.find('div',{'class':'bp_heading'}).text
+
+		# Parse out the season number, episode number, and episode_title
+		season_num = re.findall('[\d]+', heading_text)[0]
+		ep_num = re.findall('[\d]+', heading_text)[1]
+		ep_name = soup.find('div',{'class':'title_wrapper'}).find('h1').text.strip(' ').strip('\xa0')
+		logger.info('get_imdb_episode - found: {}'.format(ep_num))
+
+		# Get the episode summary
+		# kill...me...
+		summary = soup.find('div',{'class':'summary_text'}).text\
+		.strip('\n').strip(' ').strip('\n').strip('\xa0»')\
+		.strip('See full summary').strip('\n')
+
+		# Get the episode cast/crew
+		crew_url = 'https://www.imdb.com/title/{}/fullcredits'.format(episode_id)
+		crew_page = requests.get(crew_url)
+
+		# Get an array with crew Tag elements to pull the actor and character from
+		crew_soup = BeautifulSoup(crew_page.content,'html.parser')
+		crew_row_odd = crew_soup.find_all('tr',{'class':'odd'})
+		crew_row_even = crew_soup.find_all('tr',{'class':'even'})
+		crew_row_full = crew_row_odd + crew_row_even
+		logger.info('get_imdb_episode - cast_members: {}'.format(len(crew_row_full)))
+
+		# Append dictionaries with the actor and character to the crew array
+		crew = []
+		for row in crew_row_full:
+			crew_image = row.find('td',{'class':'primary_photo'})
+			crew_name = crew_image.find('a').find('img')['alt']
+			crew_character = row.find('td',{'class':'character'}).text.strip('\n')
+
+			crew.append({
+				'actor': crew_name,
+				'character': crew_character,
+			})
+
+		# Return the episode dictionary
+		return {
+			'season_num': season_num,
+			'ep_num': ep_num,
+			'ep_name': ep_name,
+			'summary': summary,
+			'crew': crew,
+		}
+
+	@classmethod
+	def get_imdb_episodes_single_thread(cls,show_id,season_num,episodes):
+		'''
+		This is used for performance comparisons against threaded methods.
+		'''
+		logger.info('get_imdb_episodes_single_thread - {} - {} - {}'.format(show_id, season, episodes))
+
+		season = cls.get_imdb_season(show_id,season_num)
+		ep_ids = [x['imdb_id'] for x in season['ep_list']]
+
+		episodes = []
+		for ep_id in ep_ids:
+			episodes.append(cls.get_imdb_episode(ep_id))
+
+		return episodes
+
+	@classmethod
+	def get_imdb_episodes(cls,show_id,season_num,episodes):
+		'''
+		This requires a show's IMDB ID, a valid season number be passed. If an
+		array of numbers is passed as episodes, only those will be included in
+		the response. This uses threaded logic to retreive and process each
+		individual episode's IMDB page. A dictionary with information about
+		the season is returned.
+		'''
+		logger.info('get_imdb_episodes - {} - {} - {}'.format(show_id, season, episodes))
+
+		# Get the relevant episode ids
+		season = cls.get_imdb_season(show_id,season_num)
+		ep_ids = [x['imdb_id'] for x in season['ep_list']]
+
+		# Create our array of episodes
+		episodes = []
+		with ThreadPoolExecutor(max_workers=10) as executor:
+
+			# Build the threaded commands
+			future_to_result = {executor.submit(cls.get_imdb_episode, ep_id): ep_id for ep_id in ep_ids}
+
+			for future in as_completed(future_to_result):
+				result = future_to_result[future]
+				try:
+					data = future.result()
+				except Exception as e:
+					logger.info(e)
+				else:
+					episodes.append(data)
+
+		return episodes
 
 	@classmethod
 	def get_show_tmdb_info(cls,show_search):

@@ -213,6 +213,37 @@ class Episode(models.Model):
 
         return ret
 
+    @classmethod
+    def get_episodes(cls,show_id,season,cast=False):
+        '''
+        This method is responsible for returning an array of Episode objects
+        which meet the show_id and season number passed.
+        '''
+        logger.info('Episode.get_episodes: {} - {} - {}'.format(show_id,season,cast))
+
+        ep_filtered = cls.objects.filter(show_id=show_id,season=season).order_by('ep_num')
+        logger.info('Episode.get_episodes: found {}'.format(ep_filtered.count()))
+
+        episode_array = []
+        for episode in ep_filtered:
+            ep_cast_filtered =  Cast.objects.filter(episode_id=episode.episode_id)
+            cast = [
+                {
+                    'actor': ep_cast_obj.actor,
+                    'character': ep_cast_obj.character,
+                }
+                for ep_cast_obj in ep_cast_filtered
+            ]
+            episode_array.append({
+                'episode_id': episode.episode_id,
+                'ep_num': episode.ep_num,
+                'ep_name': episode.imdb_name,
+                'cast': cast,
+            })
+            logger.info('Episode.get_episodes: added - {}'.format(episode.imdb_name))
+            
+        return episode_array
+
 class Cast(models.Model):
     cast_id = models.AutoField(primary_key=True)
     actor = models.CharField(max_length=100)
@@ -235,11 +266,12 @@ class Cast(models.Model):
 
             try:
                 imdb_id = Episode.get_imdb_id_by_id(episode_id)
-                ep_cast = cls.api_service.get_episode_cast(imdb_id)
+                episode_obj = cls.api_service.get_imdb_episode(imdb_id)
             except ElementNotFound as e:
                 raise CastException('Unable to retrieve episode cast')
 
             # Build the cast entries from the API request
+            ep_cast = episode_obj['crew']
             for cast in ep_cast:
                 cast_model = cls(actor=cast['actor'],character=cast['character'],episode_id=episode)
                 logger.info('Got model: {}'.format(cast_model))

@@ -6,6 +6,8 @@ from .forms import *
 from .models import *
 from .redactions import words
 import logging
+from .api_service import APIService
+import time
 
 logger = logging.getLogger('apilog')
 
@@ -179,15 +181,32 @@ class APIView(View):
 
 	@validate_inputs
 	def get_season_page(self,request,show_id,season,message=None,warning=None,error=None):
+		'''
+		This method is called by get and returns a context dictionary used to
+		populate the template selected by the get method. The context dictionary
+		is populated with information about the show's season. The template to
+		fill out with the context dictionary is selected in the get method.
+		'''
 		logger.info('APIView.get_show_page: {} - {} - {} - {} - {}'.format(show_id,season,message,warning,error))
+
+		# This doesn't feel right...
+		def get_cast_match(words,episode_id):
+
+			match_found = False
+
+			for word in words:
+				match_found = (Cast.get_match(episode_id,word) or match_found)
+				if match_found:
+					break
+
+			return match_found
 
 		try: # Get the episode count for the season
 			episodes = Episode.get_count(show_id,season=season)
-			logger.info('GOT EPISODES')
 
 		except Exception as e: # Failed to retrieve episodes
 			warning = 'Season does not exist: {}'.format(season)
-			logger.info('RETURNING SHOW: {}'.format(e.__class__.__name__))
+			logger.info('APIView.get_show_page exception: {}'.format(e))
 
 			show_name = Show.get_show_name(show_id)
 			context = {
@@ -196,13 +215,21 @@ class APIView(View):
 				'error': error,
 				'show_name': show_name,
 				'form': SeasonForm,
-				#'episodes': Episode.get_count(show_id=show_id,season=season),
+				'episode_count': Episode.get_count(show_id=show_id,season=season),
 				'page_h1': show_name,
 			}
 
 		else:
-			logger.info('RETURNING SEASON')
 			show_name = Show.get_show_name(show_id)
+			episodes = [
+				{
+					'ep_num': episode['ep_num'],
+					'ep_name': episode['ep_name'],
+					'match_found': get_cast_match(words,episode['episode_id']),
+					'cast': episode['cast'],
+				}	for episode in Episode.get_episodes(show_id,season,cast=True)
+			]
+			logger.info('Episode.get_season_page - episodes: {}'.format(episodes))
 			context = {
 				'message': message,
 				'warning': warning,
@@ -244,6 +271,41 @@ class APIView(View):
 		}
 
 		return context
+
+
+
+	@classmethod
+	def test_view(cls, request):
+		'''
+		This is used solely as a shortcut for testing.
+		'''
+		logger.info('APIView.test_view: {}'.format(request))
+		template = loader.get_template('test.html')
+
+		service = APIService()
+
+		single_start = time.time()
+		episodes = service.get_imdb_episodes_single_thread('tt0413573',12,5)
+		single_finish = time.time()
+
+		multi_start = time.time()
+		episodes = service.get_imdb_episodes('tt0413573',12,5)
+		multi_finish = time.time()
+
+		context = {
+			#'episodes': service.get_imdb_episodes('tt0413573', 12, 2),
+			'single_start': single_start,
+			'single_finish': single_finish,
+			'multi_start': multi_start,
+			'multi_finish': multi_finish,
+			'single_time': single_finish - single_start,
+			'multi_time': multi_finish - multi_start,
+		}
+
+		return HttpResponse(template.render(context, request))
+
+
+
 
 	def get(self,request,show_id=None,season=None,episode=None,message=None,warning=None,error=None):
 		logger.info('APIView.get: {} - {} - {} - {} - {} - {}'.format(show_id,season,episode,message,warning,error))

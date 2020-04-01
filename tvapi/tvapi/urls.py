@@ -24,5 +24,6 @@ urlpatterns = [
 	path('tv/<slug:show_id>/', APIView.as_view(), name='showView'),
 	path('tv/<slug:show_id>/season/<slug:season>/', APIView.as_view(), name='seasonView'),
 	path('tv/<slug:show_id>/season/<slug:season>/episode/<slug:episode>/', APIView.as_view(), name='episodeView'),
+    path('test/', APIView.test_view, name='test'),
     path('admin/', admin.site.urls),
 ]

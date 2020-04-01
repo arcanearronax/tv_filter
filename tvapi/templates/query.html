@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
 
 {% block page_top %}
-	{% if episodes %}
-		<h5>Episodes: {{ episodes }}</h5>
+	{% if episode_count %}
+		<h5>Episodes: {{ episode_count }}</h5>
 	{% else %}
 		<h5>Episode: {{ episode }}</h5>
 	{% endif %}
@@ -16,14 +16,36 @@
 	{% elif seasons %}
 		<h5>Seasons: {{ seasons }}</h5>
 	{% endif %}
+
+	{% if episodes %}
+		<h5>Episodes: {{ episodes|length }}</h5>
+		<table style="border: 1px solid white">
+			<tr style="border: 1px solid white">
+				<th class="ep-border">Episode Number</th>
+				<th class="ep-border">Episode Name</th>
+				<th class="ep-border">Match Found?</th>
+			</tr>
+			{% for episode in episodes %}
+				<tr class="ep-border">
+					<td class="ep-border">{{ episode.ep_num }}</td>
+					<td class="ep-border">{{ episode.ep_name }}</td>
+					{% if episode.match_found %}
+						<td class="w3-pale-yellow ep-border">{{ episode.match_found }}</td>
+					{% else %}
+						<td class="w3-pale-blue ep-border">{{ episode.match_found }}</td>
+					{% endif %}
+				</tr>
+			{% endfor %}
+		</table>
+	{% endif %}
 {% endblock %}
 
 {% block episode_info %}
 
 	{% if episode %}
 		<h5>Episode: {{ episode }}</h5>
-	{% elif episodes %}
-		<h5>Episodes: {{ episodes }}</h5>
+	{% elif episode_count %}
+		<h5>Episodes: {{ episode_count }}</h5>
 	{% endif %}
 
 {% endblock %}
