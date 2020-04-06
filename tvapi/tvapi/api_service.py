@@ -37,22 +37,61 @@ class APIService():
 
 		# Get the table with the IMDB title data
 		soup = BeautifulSoup(page.content,'html.parser')
-		find_list_table = soup.find('table', {'class':'findList'})
+		search_rows = soup.find_all('td', {'class':'result_text'})
+		logger.info('Got search rows: {}'.format(len(search_rows)))
 
 		# Iterate over the rows with title information and build the array
 		search_results = []
-		for row in find_list_table.find_all():
-			result_text = row.find('td',{'class':'result_text'})
-			result_a = result_text.find('a')
+		for row in search_rows:
+			result_a = row.a
+			result_name = result_a.text
 
 			result_info = {}
-			result_info['imdb_id'] = re.search('tt[\d]{6}', result_a['href']).group(0)
+			result_info['imdb_id'] = re.search('tt[\d]{4,8}', result_a['href'])[0]
 			result_info['imdb_name'] = result_a.text
-			result_info['year'] = 0 # Leaving this set to a default for now
+			try:
+				result_info['year'] = int(re.search('\([\d]{4}\)', row.text)[0] \
+				.replace('(','').replace(')','')) # Leaving this set to a default for now
+			except TypeError as t: # If we fail to find a regex match
+				result_info['year'] = None
 
 			search_results.append(result_info)
 
+		logger.info('Returning rows: {}'.format(len(search_results)))
 		return search_results
+
+	@classmethod
+	def get_show_imdb_info(cls, imdb_id):
+		url = 'https://www.imdb.com/title/{}'.format(url_encode(imdb_id))
+		page = requests.get(url)
+
+		# Get the table with the IMDB title data
+		soup = BeautifulSoup(page.content,'html.parser')
+		imdb_name = soup.find_all('div', {'class':'title_wrapper'})[0].h1.text
+		logger.info('APIService.get_show_imdb_info: found - {}'.format(imdb_name))
+
+		season_nav = soup.find('div', {'class': 'seasons-and-year-nav'})
+		logger.info('GOT SEASON NAV: {}'.format(season_nav))
+		link_list = season_nav.find_all('a')
+
+		max_season = 0
+		for link in link_list:
+			logger.info('LINK - {}'.format(link))
+			link_value = link.text.replace(' ','')
+			logger.info('LINK-VALUE - {}'.format(link_value))
+			if (link.text.isdigit()):
+				link_int = int(link.text)
+				if (link_int < 1000):
+					if (link_int > max_season):
+						max_season = link_int
+
+		return {
+			'imdb_id': imdb_id,
+			'imdb_name': imdb_name,
+			'seasons': max_season,
+		}
+
+
 
 	@classmethod
 	def get_imdb_seasons(cls, imdb_id):
@@ -303,9 +342,15 @@ class APIService():
 		req = requests.get(url)
 		json_data = json.loads(req.text)
 		logger.info('\tjson_data len: {}'.format(len(json_data)))
+		logger.info('\tjson_data len: {}'.format(json_data))
 
-		episodes_arr = json_data['episodes']
-		logger.info('\tepisodes: {}'.format(len(episodes_arr)))
+		try:
+			episodes_arr = json_data['episodes']
+			logger.info('\tepisodes: {}'.format(len(episodes_arr)))
+		except Exception as e:
+			logger.info('Encountered exception: {}'.format(e))
+			raise ResourceNotFound('Failed to find page: {}'.format(json_data))
+
 
 		episodes = []
 		for ep in episodes_arr:
@@ -321,48 +366,6 @@ class APIService():
 
 		logger.info('\treturning: {}'.format(len(episodes)))
 		return episodes
-
-
-	# Need to rebuild this to pull individal episode's imdb info
-	@classmethod
-	def get_show_imdb_info(cls,show_search):
-		'''
-		This submits a request to the TMDB API to search for a given show name
-		and returns a dictionary which contains IMDB data for the show.
-		'''
-		logger.info('APIService.get_episode_imdb_info: {}'.format(show_search))
-
-		url = '{}'.format('https://movie-database-imdb-alternative.p.rapidapi.com/')
-		logger.info('\turl: {}'.format(url))
-
-		headers = {
-			'x-rapid-host': 'movie-database-imdb-alternative.p.rapidapi.com',
-			'x-rapidapi-key': '7f282ba72amsh62fa1b3b0be127bp1fce1fjsn38c68fb682ad',
-		}
-		parameters = {
-			'page': '1',
-			'r': 'json',
-			's': show_search,
-		}
-
-		try:
-			req = requests.get(url,headers=headers,params=parameters)
-
-			json_data = json.loads(req.text)
-			logger.info('\tjson_data len: {}'.format(len(json_data)))
-
-			imdb_id = json_data['Search'][0]['imdbID']
-			imdb_name = json_data['Search'][0]['Title']
-			logger.info('\timdb: {} - {}'.format(imdb_id,imdb_name))
-		except KeyError as s:
-			raise ResourceNotFound('Failed to find: {}'.format(show_search))
-
-		episode_info = {
-			'imdb_id': imdb_id,
-			'imdb_name': imdb_name,
-		}
-
-		return episode_info
 
 	@classmethod
 	def get_episodes_imdb_info(cls,imdb_id,season):

@@ -13,17 +13,31 @@ class Show(models.Model):
     imdb_id = models.CharField(max_length=9,null=True)
     imdb_name = models.CharField(max_length=100,null=True)
     seasons = models.IntegerField(null=True)
+    year = models.IntegerField(null=True)
 
     api_service = APIService
 
     @classmethod
     def get_show_name(cls,show_id):
         logger.info('Show.get_show_name: {}'.format(show_id))
+
         try:
-            return cls.objects.get(show_id=show_id).tmdb_name
+            ret = cls.objects.get(show_id=show_id).tmdb_name
+            logger.info('FOUND-show_id: {} - show_name - {}'.format(show_id, ret))
+            if (ret is not None):
+                return ret
         except Exception as e:
             logger.info('get_show_name error: {}'.format(e))
-            return None
+
+        try:
+            ret = cls.objects.get(show_id=show_id).imdb_name
+            logger.info('FOUND-show_id: {} - show_name - {}'.format(show_id, ret))
+            if (ret is not None):
+                return ret
+        except Exception as e:
+            logger.info('get_show_name error: {}'.format(e))
+
+        return None
 
     @classmethod
     def get_season_count(cls,show_id=show_id):
@@ -71,6 +85,34 @@ class Show(models.Model):
             logger.info('\treturning: {}'.format(ret))
 
         return ret
+
+    @classmethod
+    def get_show_by_imdb_id(cls, imdb_id_search):
+        logger.info('Show.get_show_by_imdb_id: {}'.format(imdb_id_search))
+
+        try:
+            ret = cls.objects.get(imdb_id=imdb_id_search)
+        except Exception as e:
+            show_imdb_info = cls.api_service.get_show_imdb_info(imdb_id_search)
+
+            # NEED TO CONTINUE WORKING FROM HERE
+            imdb_id = show_imdb_info['imdb_id']
+            imdb_name = show_imdb_info['imdb_name']
+            seasons = show_imdb_info['seasons']
+
+            show = cls(imdb_id=imdb_id, imdb_name=imdb_name, seasons=seasons)
+            show.save()
+            ret = show
+
+        return ret
+
+    @classmethod
+    def get_shows(cls,limit=0):
+        '''
+        This method is used to return a result set of shows. It can be limited
+        if limit != 0.
+        '''
+        return cls.objects.all()
 
 class Episode(models.Model):
     episode_id = models.AutoField(primary_key=True)
@@ -126,6 +168,11 @@ class Episode(models.Model):
 
     @classmethod
     def get_count(cls,show_id,season):
+        '''
+        This is used to get the number of episodes present for a season.
+        If the episodes are not present, they will be requested via the
+        scraper and created in the db.
+        '''
         logger.info('Episode.get_count: {} - {}'.format(show_id,season))
 
         # If we have episodes in the db, go ahead and return
@@ -135,13 +182,13 @@ class Episode(models.Model):
             return cnt
 
         # If we don't have episodes, retrieve them
-        show_tmdb_id = Show.objects.get(show_id=show_id).tmdb_id
-        episodes = cls.api_service.get_episodes(show_tmdb_id,season)
+        show_imdb_id = Show.objects.get(show_id=show_id).imdb_id
+        episodes = cls.api_service.get_episodes_imdb_info(show_imdb_id,season)
         logger.info('\tretrieved episodes: {}'.format(len(episodes)))
 
         for ep in episodes:
             #logger.info('ep: {}'.format(ep))
-            episode = cls(ep_num=str(ep['ep_num']),tmdb_id=str(ep['tmdb_id']),tmdb_name=ep['tmdb_name'],season=season,show_id=show_id).save()
+            episode = cls(ep_num=str(ep['ep_num']),imdb_id=str(ep['imdb_id']),imdb_name=ep['imdb_name'],season=season,show_id=show_id).save()
 
         cls.get_imdb_info(show_id,season)
 
@@ -241,7 +288,7 @@ class Episode(models.Model):
                 'cast': cast,
             })
             logger.info('Episode.get_episodes: added - {}'.format(episode.imdb_name))
-            
+
         return episode_array
 
 class Cast(models.Model):

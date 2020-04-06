@@ -12,42 +12,85 @@
 
 {% block season_info %}
 	{% if season %}
-		<h5>Season: {{ season }}</h5>
+		<h5>Season: <a href="/tv/{{ show_id }}/season/{{ season }}">{{ season }}</a></h5>
 	{% elif seasons %}
-		<h5>Seasons: {{ seasons }}</h5>
+		<table style="border: 1px solid white">
+			<tr style="border: 1px solid white">
+				<th class="ep-border ep-info">Season Number</th>
+			</tr>
+			{% for season in seasons %}
+				<tr class="ep-border">
+					<td class="ep-border ep-info"><a href="season/{{ season }}">{{ season }}</a></td>
+				</tr>
+			{% endfor %}
+		</table>
 	{% endif %}
 
 	{% if episodes %}
-		<h5>Episodes: {{ episodes|length }}</h5>
 		<table style="border: 1px solid white">
 			<tr style="border: 1px solid white">
-				<th class="ep-border">Episode Number</th>
-				<th class="ep-border">Episode Name</th>
-				<th class="ep-border">Match Found?</th>
+				<th class="ep-border ep-info">Episode Number</th>
+				<th class="ep-border ep-info">Episode Name</th>
+				<th class="ep-border match-info">Match Found?</th>
 			</tr>
 			{% for episode in episodes %}
 				<tr class="ep-border">
-					<td class="ep-border">{{ episode.ep_num }}</td>
-					<td class="ep-border">{{ episode.ep_name }}</td>
+					<td class="ep-border ep-info"><a href="episode/{{ episode.ep_num}}">{{ episode.ep_num }}</a></td>
+					<td class="ep-border ep-info"><a href="episode/{{ episode.ep_num}}">{{ episode.ep_name }}</a></td>
 					{% if episode.match_found %}
-						<td class="w3-pale-yellow ep-border">{{ episode.match_found }}</td>
+						<td class="w3-pale-yellow ep-border match-info">{{ episode.match_found }}</td>
 					{% else %}
-						<td class="w3-pale-blue ep-border">{{ episode.match_found }}</td>
+						<td class="w3-pale-blue ep-border match-info">{{ episode.match_found }}</td>
 					{% endif %}
 				</tr>
 			{% endfor %}
 		</table>
 	{% endif %}
+
+
+{% endblock %}
+
+{% block search_info %}
+	{% if search_results %}
+	<table style="border: 1px solid white">
+		<tr style="border: 1px solid white">
+			<th class="ep-border ep-info">Search Result</th>
+			<th class="ep-border ep-info">Year</th>
+		</tr>
+		{% for result in search_results %}
+			<tr class="ep-border">
+				<td class="ep-border ep-info"><a href="/{{ result.imdb_id }}">{{ result.imdb_name }}</a></td>
+				<td class="ep-border ep-info">{{ result.year }}</td>
+			</tr>
+		{% endfor %}
+	</table>
+	{% endif %}
 {% endblock %}
 
 {% block episode_info %}
-
 	{% if episode %}
 		<h5>Episode: {{ episode }}</h5>
 	{% elif episode_count %}
 		<h5>Episodes: {{ episode_count }}</h5>
 	{% endif %}
 
+{% endblock %}
+
+{% block show_listings %}
+	{% if shows %}
+		<table style="border: 1px solid white">
+			<tr style="border: 1px solid white">
+				<th class="ep-border ep-info">Show Name</th>
+				<th class="ep-border ep-info">Year</th>
+			</tr>
+			{% for show in shows %}
+				<tr class="ep-border">
+					<td class="ep-border ep-info"><a href={{ show.show_id }}>{{ show.show_name }}</a></td>
+					<td class="ep-border ep-info">{{ show.year }}</td>
+				</tr>
+			{% endfor %}
+		</table>
+	{% endif %}
 {% endblock %}
 
 {% block warning_block %}

@@ -55,23 +55,16 @@
 			font-size: 2em;
 		}
 
-		table.ep-border {
+		.ep-border {
 			border: 1px solid white;
 		}
 
-		tr.ep-border {
-			border: 1px solid white;
-			padding: 5px;
+		.ep-info {
+			padding: 0.5em 2em;
 		}
 
-		th.ep-border {
-			border: 1px solid white;
-			padding: 5px;
-		}
-
-		td.ep-border {
-			border: 1px solid white;
-			padding: 5px;
+		.match-info {
+			padding: 0em 2em;
 		}
 
 	</style>
@@ -84,12 +77,25 @@
 
 		<div class="w3-container">
 
-			<h1>{{ page_h1 }}</h1>
+			<h1>
+				{% if page_h1_link %}
+					<a href="{{ page_h1_link }}">{{ page_h1 }}</a>
+				{% else %}
+					{{ page_h1 }}
+				{% endif %}
+			</h1>
+			<h3><a href="/tv">Go to Show Index</a></h3>
 
 			{% block season_info %}
 			{% endblock %}
 
 			{% block episode_info %}
+			{% endblock %}
+
+			{% block search_info %}
+			{% endblock %}
+
+			{% block show_listings %}
 			{% endblock %}
 
 			{% block warning_block %}
