@@ -62,6 +62,10 @@ class APIService():
 
 	@classmethod
 	def get_show_imdb_info(cls, imdb_id):
+		'''
+		This returns a dictionary with info about the show from the show's IMDB
+		page.
+		'''
 		url = 'https://www.imdb.com/title/{}'.format(url_encode(imdb_id))
 		page = requests.get(url)
 
@@ -70,10 +74,12 @@ class APIService():
 		imdb_name = soup.find_all('div', {'class':'title_wrapper'})[0].h1.text
 		logger.info('APIService.get_show_imdb_info: found - {}'.format(imdb_name))
 
+		# Get season navbar from the page
 		season_nav = soup.find('div', {'class': 'seasons-and-year-nav'})
 		logger.info('GOT SEASON NAV: {}'.format(season_nav))
 		link_list = season_nav.find_all('a')
 
+		# Find the greatest season number
 		max_season = 0
 		for link in link_list:
 			logger.info('LINK - {}'.format(link))
@@ -85,10 +91,15 @@ class APIService():
 					if (link_int > max_season):
 						max_season = link_int
 
+		# Find the year the show started airing
+		year_title = soup.find_all('a', {'title': 'See more release dates'})[0]
+		year = int(re.search('[\d]{4}', year_title.text)[0])
+
 		return {
 			'imdb_id': imdb_id,
 			'imdb_name': imdb_name,
 			'seasons': max_season,
+			'year': year,
 		}
 
 

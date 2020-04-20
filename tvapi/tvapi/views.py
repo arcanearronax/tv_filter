@@ -1,188 +1,207 @@
-from django.http import HttpResponse, Http404, HttpResponseRedirect
+from django.http import HttpResponse, Http404, HttpResponseRedirect, HttpResponseNotFound, HttpResponseServerError
 from django.views import View
 from django.template import loader
 from django.shortcuts import redirect, reverse
+from django.urls.exceptions import Resolver404
 from .forms import *
-from .models import *
+from .models import Show, Episode, Cast, ShowException, EpisodeException, CastException, api_service
 from .redactions import words
 import logging
 import time
-from .api_service import *
 
-logger = logging.getLogger('apilog')
+logger = logging.getLogger('viewlog')
+
+class TableData():
+	'''
+	This class is used to hold data which the template renders inserts into
+	listing tables.
+	'''
+	def __init__(self,cols,data_sets):
+		logger.info('TableData.__init__: {} - {}'.format(cols, data_sets))
+
+		# validate and store the columns
+		assert type(cols) is list, 'cols must be a list'
+		assert type(data_sets) is list, 'data_set must be a list'
+		self.cols = cols
+
+		# Instantiate our attributes to populate
+		self.names = []
+		self.data_points = {}
+
+		# Breakdown the datapoints and set values
+		for data_set in data_sets:
+			name = data_set.pop('name')
+			self.names.append(name)
+			self.data_points[name] = data_set
+
+			# Let's just manually add the
+			if ('episode' in self.data_points[name]):
+				self.data_points[name]['link'] = 'episode/{}'.format(self.data_points[name]['episode'])
+			else:
+				self.data_points[name]['link'] = '{}'.format(self.data_points[name]['id'])
+
+		logger.info('INITIALIZED: {}'.format(self.tmp_repr()))
+
+	def tmp_repr(self):
+		return str({
+			'cols': self.cols,
+			'names': self.names,
+			'data_points': self.data_points,
+		})
+
+	def get_columns(self):
+		return self.cols
+
+	def get_names(self):
+		return self.names
+
+	def get_data_points(self,name):
+		return self.data_points[name]
+
+	def get_data_point(self,name,data_point):
+		return self.data_points[name][data_point]
+
+	def get_row_data_points(self,name):
+		return [x for x in self.data_points[name] if x in self.cols]
+
 
 class APIView(View):
 
+	key_args = ['show_id', 'season', 'episode']
+
 	# Decorator to validate inputs
-	def validate_inputs(func):
+
+
+	@classmethod
+	def generate_table_data(cls,data_rows,data_sets):
 		'''
-		This is a decorator used to validate the tv, season, and episode
-		values passed to GET requests.
+		This receives a list populated by single layer dictionaries and creates
+		a table_data object used to generate a table for the webpage.
+		The dictionaries in the list must include identical keys.
 		'''
-		def wrapper(*args,**kwargs):
-			logger.info('validating inputs')
+		data_entries = []
+		# Loop over the data sets we have
+		for data_set in data_sets:
+			# Look at each element in the data set
+			data_entry = {'name': data_set.pop('name')}
+			data_entry['data_points'] = data_set
 
-			logger.info('VALIDATE_ARGS: {}'.format(len(args)))
+			data_entries.append(data_entry)
 
-			show_id = args[2]
-			season = args[3]
-			episode = args[4]
+		# Construct the table_data dict to return
+		table_data = {
+			'cols': data_rows,
+			'entries': data_entries,
+		}
 
-			# Raise an error or passes
-			def validate_show_id(show_id):
-				'''
-				This is used to validate the show_id, if present.
-				'''
-				logger.info('\tvalidate_show_id: {}'.format(show_id))
-				try:
-					int(show_id)
-					logger.info('\tvalid show_id')
-					return True
-				except ValueError as v:
-					logger.info('\tvalue_error: {}'.format(v))
-					raise InvalidShowId(value=show_id,message='Not an int - show_id')
-				except TypeError as t:
-					logger.info('\ttype_error: {}'.format(t))
-					raise InvalidShowId(value=show_id,message='Not an int - show_id')
+		#logger.info('table_data: {}'.format(table_data))
+		return table_data
 
-				return False
-
-			def validate_season(season):
-				'''
-				This is used to validate the season, if present.
-				'''
-				try:
-					int(season)
-					return True
-				except ValueError:
-					raise InvalidSeason(value=season,message='Not an int - season')
-
-				return False
-
-			def validate_episode(episode):
-				'''
-				This is used to validate the episode_id, if present.
-				'''
-				try:
-					int(episode)
-					return True
-				except ValueError:
-					raise InvalidInput(value=episode,message='Not an int - show_id')
-
-				return False
-
-			# Make sure we aren't missing an arg
-			if (show_id in ('None',None)) and (season not in ('None',None) or episode not in ('None',None)):
-				raise InvalidShowId(value=show_id,message='Invalid show_id')
-
-			elif (season in ('None',None)) and (episode not in ('None',None)):
-				raise InvalidSeason(value=season,message='Invalid show_id')
-
-			# Make sure the values are valid ints
-			valid = True
-			if (show_id not in ('None',None)):
-				if (not validate_show_id(show_id)):
-					raise InvalidShowId(value=show_id,message='Invalid show_id')
-			elif (season not in ('None',None)):
-				if (not validate_season(show_id)):
-					raise InvalidSeason(value=season,message='Invalid season')
-			elif (episode not in ('None',None)):
-				if (not validate_episode(show_id)):
-					raise InvalidEpisode(value=episode,message='Invalid episode')
-
-			return func(*args,**kwargs)
-
-		return wrapper
-
-	def get_search_page(self,request,message=None,warning=None,error=None):
+	def get_db_search_results(self,request):
 		'''
 		This method returns a context dictionary used to populate the basic
 		search page.
 		'''
-		logger.info('APIView.get_show: {} - {} - {}'.format(message,warning,error))
+		logger.info('APIView.get_db_search_results')
 		context = {
-			'message': message,
-			'warning': warning,
-			'error': error,
 			'form': SearchForm,
-			'page_h1': 'Search for a show'
+			'page_header': 'Search for a show',
 		}
 
 		return context
 
-	def get_imdb_search(self,request,search_term,message=None,warning=None,error=None):
+	def get_imdb_search_results(self,request,search_term):
 		'''
 		This is used to return a search result page which displays IMDB search
 		results for a user provided search.
 		'''
-		logger.info('APIView.get_imdb_search: {} - {} - {} - {}'.format(search_term,message,warning,error))
-		tmpApi = APIService()
-		search_results = tmpApi.get_imdb_title_search(search_term)
-		logger.info('Got search results: {}'.format(len(search_results)))
+		logger.info('APIView.get_imdb_search_results: {}'.format(search_term))
+
+		# This is mostly a temporary measure
+		# We don't want to log everything that comes up as a search result
+		search_results = api_service.get_imdb_title_search(search_term)
+		logger.info('	Got search results: {}'.format(len(search_results)))
+
+		converted_search_results = [
+			{
+				'name': x['imdb_name'],
+				'year': x['year'],
+				'id': x['imdb_id'],
+			} for x in search_results
+		]
+		# Need to convert search results to a TableData object
+		table_data = TableData(['name', 'year'], converted_search_results)
+
 		return {
-			'message': message,
-			'warning': warning,
-			'error': error,
+			'page_header': 'Search Results',
+			'sub_header': 'Go Back to Search',
+			'sub_header_link': '/',
+			'name_col_alt': 'search results',
 			'form': SearchForm,
-			'page_h1': 'Search Results',
-			'search_results': search_results
+			'table_data': table_data,
 		}
 
-	def get_show_listing(self,request,message=None,warning=None,error=None):
+	def get_recent_shows(self,request):
 		'''
 		This is used to resturn a context dictionary to populate a show listings
 		page with shows to populate the page.
 		'''
-		shows = Show.get_shows()
-		show_info = {
-			'message': message,
-			'warning': warning,
-			'error': error,
-			'form': SearchForm,
-			'page_h1': 'Recently Found Shows',
-			'shows': [{
-				'show_id': show.show_id,
-				'show_name': show.imdb_name,
-				'imdb_id': show.imdb_id,
+		logger.info('APIView.get_recent_shows:')
+
+		recent_shows = Show.get_shows()
+		# Parse out the data we want in the listing table
+		show_data = []
+		for show in recent_shows:
+			show_data.append({
+				'name': show.imdb_name,
 				'year': show.year,
-			} for show in shows]
-		}
+				'id': show.show_id,
+			})
 
-		logger.info('SHOW_INFO::: {}'.format(show_info))
-		return show_info
-
-	#@validate_inputs
-	def get_show_page(self,request,show_id,message=None,warning=None,error=None):
-		'''
-		This is used to return a context dictionary which contains information
-		about a show used to populate the page.
-		'''
-		logger.info('APIView.get_show_page: {} - {} - {} - {}'.format(show_id,message,warning,error))
-
-		show_name = Show.get_show_name(show_id)
 		context = {
-			'message': message,
-			'warning': warning,
-			'error': error,
-			'show_name': show_name,
-			'form': SeasonForm,
-			'show_id': show_id,
-			'seasons': [i+1 for i in range(Show.get_season_count(show_id))],
-			'page_h1': show_name,
-			'page_h1_link': "/tv/{}".format(show_id),
+			'page_header': 'Show Index',
+			'sub_header': 'Go to Show Search',
+			'sub_header_link': '../',
+			'table_data': TableData(['name','year'],show_data),
 		}
 
 		return context
 
+	#@validate_inputs
+	def get_show_page(self,request,show_id):
+		'''
+		This is used to return a context dictionary which contains information
+		about a show used to populate the page.
+		'''
+		logger.info('APIView.get_show_page: {}'.format(show_id))
 
-	def get_season_page(self,request,show_id,season,message=None,warning=None,error=None):
+		show_name = Show.get_show_name(show_id)
+		seasons = Show.get_season_count(show_id=show_id)
+		show_season_data = []
+		for season in range(1, seasons+1):
+			show_season_data.append({
+				'name': season,
+				'name_col_alt': 'season',
+				'id': 'season/{}'.format(season),
+			})
+
+		context = {
+			'page_header': show_name,
+			'sub_header': 'Go to Show Index',
+			'sub_header_link': '../',
+			'table_data': TableData(['name'], show_season_data),
+		}
+
+		return context
+
+	def get_season_page(self,request,show_id,season):
 		'''
 		This method is called by get and returns a context dictionary used to
 		populate the template selected by the get method. The context dictionary
 		is populated with information about the show's season. The template to
 		fill out with the context dictionary is selected in the get method.
 		'''
-		logger.info('APIView.get_show_page: {} - {} - {} - {} - {}'.format(show_id,season,message,warning,error))
+		logger.info('APIView.get_show_page: {} - {}'.format(show_id,season))
 
 		# This doesn't feel right...
 		def get_cast_match(words,episode_id):
@@ -199,117 +218,90 @@ class APIView(View):
 
 			return match_found
 
-		try: # Get the episode count for the season
-			episodes = Episode.get_count(show_id,season=season)
+		# Try to get the episodes in the season
+		# Not catching ShowException here, generate 404 response in get
+		episodes = Episode.get_count(show_id,season=season)
 
-		except Exception as e: # Failed to retrieve episodes
-			warning = 'Season does not exist: {}'.format(season)
-			logger.info('APIView.get_show_page exception: {}'.format(e))
+		show_name = Show.get_show_name(show_id)
+		season_episode_data = [
+			{
+				'id': episode['episode_id'],
+				'episode': episode['ep_num'],
+				'name': episode['ep_name'],
+				'match_found': get_cast_match(words,episode['episode_id']),
+			}	for episode in Episode.get_episodes(show_id,season,cast=True)
+		]
+		logger.info('	found episodes: {}'.format(episodes))
 
-			show_name = Show.get_show_name(show_id)
-			context = {
-				'message': message,
-				'warning': warning,
-				'error': error,
-				'show_id': show_id,
-				'show_name': show_name,
-				'form': SeasonForm,
-				'episode_count': Episode.get_count(show_id=show_id,season=season),
-				'page_h1': show_name,
-				'page_h1_link': "/tv/{}".format(show_id),
-			}
-
-		else:
-			show_name = Show.get_show_name(show_id)
-			episodes = [
-				{
-					'ep_num': episode['ep_num'],
-					'ep_name': episode['ep_name'],
-					'match_found': get_cast_match(words,episode['episode_id']),
-					'cast': episode['cast'],
-				}	for episode in Episode.get_episodes(show_id,season,cast=True)
-			]
-			logger.info('Episode.get_season_page - episodes: {}'.format(episodes))
-			context = {
-				'message': message,
-				'warning': warning,
-				'error': error,
-				'show_id': show_id,
-				'show_name': show_name,
-				'form': EpisodeForm,
-				'season': season,
-				'episodes': episodes,
-				'page_h1': show_name,
-				'page_h1_link': "/tv/{}".format(show_id),
-			}
+		context = {
+			'page_header': show_name,
+			'page_header_link': '../../../{}'.format(show_id),
+			'sub_header': 'Season {}'.format(season),
+			'table_data': TableData(['episode','name','match_found'], season_episode_data)
+		}
 
 		return context
 
 	#@validate_inputs
-	def get_episode_page(self,request,show_id,season,episode,message=None,warning=None,error=None):
+	def get_episode_page(self,request,show_id,season,episode):
 		'''
 		This is used to return a context dictionary used to populate the page
 		for an episode, including the match_found flag.
 		'''
-		logger.info('APIView.get_episode_page: {} - {} - {} - {} - {} - {}'.format(show_id,season,episode,message,warning,error))
+		logger.info('APIView.get_episode_page: {} - {} - {}'.format(show_id,season,episode))
 
-		context = {}
-
-		try: # Look for the episode
+		# Try to find the episode
+		try:
 			# We should probably just grab the episode as a var
 			episode_id = Episode.get_episode_id(show_id=show_id,season=season,ep_num=episode)
 
+		except EpisodeException as ee:
+			raise Http404('Failed to find episode: {}'.format(ee))
+		# If we don't find the episode, return a warning
 		except IndexError as i:
-			logger.info('IndexError: {}'.format(i))
+			logger.error('get_episode_page index_error: {}'.format(i))
 			warning = 'Episode does not exist: {}'.format(episode)
 			#return self.get(request,show_id,season=season,warning=message)
 			show_name = Show.get_show_name(show_id)
 			context = {
 				'show_name': show_name,
-				'page_h1': show_name,
-				'page_h1_link': "/tv/{}".format(show_id),
+				'page_header': show_name,
+				'page_header_link': "/tv/{}".format(show_id),
 				'form': EpisodeForm,
 				'show_id': show_id,
 				'season': season,
-				'warning': warning,
 			}
 
+		# If we have a different issue, return a warning
 		except ValueError as v:
-			logger.info('ValueError: {}'.format(v))
-			warning = 'Episode is invalid: {}'.format(episode)
+			logger.error('get_episode_page value_error: {}'.format(v))
 
 			show_name = Show.get_show_name(show_id)
 			context = {
 				'show_name': show_name,
-				'page_h1': show_name,
-				'page_h1_link': "/tv/{}".format(show_id),
+				'page_header': show_name,
+				'page_header_link': "/tv/{}".format(show_id),
 				'form': EpisodeForm,
 				'show_id': show_id,
 				'season': season,
-				'warning': warning,
 			}
 
-			#return self.get(request,show_id,season=season,warning=warning)
-
+		# Return a message if we get an unknown exception
 		except Exception as e:
-			logger.info('Exception-here: {}'.format(e.__class__.__name__))
-			message = 'Unknown Exception: {}'.format(episode)
+			logger.error('get_episode_page exception: {}'.format(e))
 
 			show_name = Show.get_show_name(show_id)
 			context = {
 				'show_name': show_name,
-				'page_h1': show_name,
-				'page_h1_link': "/tv/{}".format(show_id),
+				'page_header': show_name,
+				'page_header_link': "/tv/{}".format(show_id),
 				'form': EpisodeForm,
 				'show_id': show_id,
 				'season': season,
-				'warning': warning,
 			}
 
-			#return self.get(request,show_id,season=season,message=message)
-
-		else: # Found the episode, get the cast info
-			logger.info('Continuing to process')
+		# If we found the episode, check for cast matches
+		else:
 			match = False
 
 			try: # Loop over the cast, looking for a match
@@ -325,11 +317,13 @@ class APIView(View):
 						'message': 'No Match Found',
 					})
 
-			except CastException as c: # We fail to retrieve ep cast
+			# If we failed to retrieve the cast, return the error
+			except CastException as c:
 				context.update({
 					'match_error': str(c),
 				})
 
+			# Look for the show's name
 			try:
 				show_name = Show.get_show_name(show_id)
 				context.update({
@@ -339,9 +333,11 @@ class APIView(View):
 					'season': season,
 					'episode': '{} - {}'.format(episode, Episode.get_name(show_id=show_id,season=season,ep_num=episode)),
 					'match': match,
-					'page_h1': show_name,
-					'page_h1_link': "/tv/{}".format(show_id),
+					'page_header': show_name,
+					'page_header_link': "/tv/{}".format(show_id),
 				})
+
+			# If we fail to retrieve the show's page, do something...
 			except InvalidPage as i:
 				show_name = Show.get_show_name(show_id)
 				context.update({
@@ -349,64 +345,183 @@ class APIView(View):
 					'form': EpisodeForm,
 					'show_id': show_id,
 					'season': season,
-					'warning': i,
 					'match': match,
-					'page_h1': show_name,
-					'page_h1_link': "/tv/{}".format(show_id),
+					'page_header': show_name,
+					'page_header_link': "/tv/{}".format(show_id),
 				})
 
 		return context
 
+	@classmethod
+	def get_404_page(cls,request, exception=None):
+		logger.info('APIView.get_404_page: {}'.format(exception))
+		logger.info('APIView.get_404_page: {}'.format(type(exception)))
+		template = loader.get_template('404.html')
 
-	def get(self,request,search_term=None,show_id=None,season=None,episode=None,message=None,warning=None,error=None,search_id=None):
+		# If the user followed a bad link, get previous page
+		logger.info(request.META)
+		try:
+			sub_header = 'Please try a different URL'
+			sub_header_link = ''
+		except Exception as e:
+			logger.info('404_error: {}'.format(e))
+			sub_header = 'Go to Page Search'
+			sub_header_link = reverse('shows')
+
+		logger.info('Do we get here?')
+
+		if type(exception) is Resolver404:
+			logger.info('WE ACTUALLY GOT HERE')
+			page_header = 'URL is Invalid'
+			error_message = 'Please try a different URL'
+		elif type(exception) is ShowException:
+			logger.info('1234567')
+			page_header = 'Show Error'
+			error_message = exception
+		elif type(exception) is SeasonException:
+			logger.info('98765432')
+			page_header = 'Season Error'
+			error_message = exception
+		elif type(exception) is EpisodeException:
+			logger.info('abcdefg')
+			page_header = 'Episode Error'
+			error_message = exception
+		elif type(exception) is Http404:
+			logger.info('GOT HTTP404')
+			page_header = 'DOES THIS WORK?'
+			error_message = 'maybe'
+		else:
+			logger.info('WE GOT HERE')
+			page_header = exception
+			error_message = exception
+
+		context = {
+			'page_header': page_header,
+			'sub_header': sub_header,
+			'sub_header_link': sub_header_link,
+			'error_message': error_message,
+		}
+		logger.info('APIView.get_404_page context: {}'.format(context))
+		return HttpResponseNotFound(template.render(context,request))
+
+	@classmethod
+	def get_500_page(cls, request):
+		logger.info('APIView.get_500_page')
+		template = loader.get_template('500.html')
+
+		# If the user followed a bad link, get previous page
+		if request.META.get('HTTP_REFERER'):
+			sub_header = 'Go back...'
+			sub_header_link = request.META.get('HTTP_REFERER')
+		else:
+			sub_header = 'Go to Page Search'
+			sub_header_link = reverse('shows')
+
+		context = {
+			'page_header': 'Server Error',
+			'sub_header': sub_header,
+			'sub_header_link': sub_header_link,
+			'error_message': 'Unknown Error',
+		}
+		logger.info('APIView.get_500_page context: {}'.format(context))
+		return HttpResponseServerError(template.render(context,request))
+
+	def get(self, request, **kwargs):
 		'''
 		This is used to respond to any GET requests directed towards this class.
 		It identifies the template and context dictionary used to render a
 		response to the request.
 		'''
-		logger.info('APIView.get: {} - {} - {} - {} - {} - {}'.format(show_id,season,episode,message,warning,error))
+		req_path = request.path_info
+		logger.info('APIView.get: {} - {}'.format(req_path, kwargs))
+
+		# Need to unpack our args
+		try:
+			show_id = int(kwargs['show_id'])
+		except KeyError as k:
+			show_id = None
+
+		try:
+			season = int(kwargs['season'])
+		except KeyError as k:
+			season = None
+
+		try:
+			episode = int(kwargs['episode'])
+		except KeyError as k:
+			episode = None
+
+		try:
+			search_id = kwargs['search_id']
+		except KeyError as k:
+			search_id = None
+
+		try:
+			search_term = kwargs['search_term']
+		except KeyError as k:
+			search_term = None
 
 		# This is used to return a show's page based on imdb_id
 		if search_id:
-			show_id = Show.get_show_by_imdb_id(search_id).show_id
-			message = None
-			warning = None
-			error = None
-			logger.info('IMDB ID: {}'.format(search_id))
-			logger.info('Got ID: {}'.format(show_id))
-
-			return redirect('showView',show_id=show_id)
+			template_name = 'listing.html'
+			try:
+				show_id = Show.get_show_by_imdb_id(search_id).show_id
+			except ShowException as se:
+				raise Http404(se)
+			except Exception as e:
+				raise Http404(e)
+			else:
+				return redirect('showView',show_id=show_id) # Just redirect instead
 
 		# Look for an episode's page
-		if episode:
-			context = self.get_episode_page(request,show_id=show_id,season=season,episode=episode,message=message,warning=warning,error=error)
+		elif episode:
+			template_name = 'info.html'
+			context = self.get_episode_page(request, **kwargs)
 
 		# Look for a season's page
 		elif season:
-			context = self.get_season_page(request,show_id=show_id,season=season,message=message,warning=warning,error=error)
+			template_name = 'listing.html'
+			try:
+				context = self.get_season_page(request, **kwargs)
+			except Exception as se:
+				logger.error('Failed to find season: {}'.format(se))
+				raise Http404('Season does not exist, is this rendering right?')
 
-		# Look for a show's page
-		elif show_id:
-			context = self.get_show_page(request,show_id=show_id,message=message,warning=warning,error=error)
+		# We're looking for a show
+		elif (request.path_info[0:4] == '/tv/'):
+
+			# We return the show's page
+			if show_id:
+				template_name = 'listing.html'
+				# Try to get info about the requested show
+				try:
+					context = self.get_show_page(request, **kwargs)
+				# Failed to find a given show
+				except ShowException as se:
+					logger.info('NEW EXCEPTION: {}'.format(se))
+					raise Http404(se)
+				# Some other exception
+				except Exception as e:
+					#raise Http500('Unknown Error: {}'.format(e))
+					raise Http404(e)
+
+			# We return the recent shows page
+			else:
+				template_name = 'listing.html'
+				context = self.get_recent_shows(request)
 
 		# Look for a search result page
 		elif search_term:
-			context = self.get_imdb_search(request,search_term=search_term,message=message,warning=warning,error=error)
+			template_name = 'listing.html'
+			context = self.get_imdb_search_results(request, **kwargs)
 
-		# Look for a show by show name
+		# Just return the search page
 		else:
-			logger.info('REQUEST---{}'.format(request.path_info))
-			if (request.path_info == '/tv/'):
-				context = self.get_show_listing(request,message=message,warning=warning,error=error)
-			else:
-				try:
-					context = self.get_search_page(request,message,warning,error)
-				except InvalidShowId as i:
-					logger.info('\tshow_id not found:{}'.format(show_id))
-					context = self.get_search_page()
+			template_name = 'query.html'
+			context = self.get_db_search_results(request)
 
 		# Render and return the response
-		template = loader.get_template('query.html')
+		template = loader.get_template(template_name)
 		return HttpResponse(template.render(context,request))
 
 	# This is used to return to user searches
@@ -420,52 +535,19 @@ class APIView(View):
 
 		# Need to verify the submitted form is valid
 		if form.is_valid():
-
 			# Get our search type and term
-			#querytype = form.cleaned_data['querytype']
 			queryvalue = form.cleaned_data['queryvalue']
 			logger.info('\tform_validated: {}'.format(queryvalue))
 
 			#ret = None
 			#if querytype == 'search':
 			ret = self.get(request,search_term=queryvalue)
+			# Change this to a redirect later?
 
-			# Here we handle searches for a season number
-			#elif querytype == 'season':
-			#	ret = redirect('seasonView',show_id=show_id,season=queryvalue)
 
-			# Here we handle searches for an episode number
-			#elif querytype == 'episode':
-			#	ret = redirect('episodeView',show_id=show_id, season=season,episode=queryvalue)
-
-			# If we don't find a show, return the search page
-			#else:
-				#ret = APIView.get('shows',request=request,message='No results for: {}: {}'.format(querytype, queryvalue))
+		# If the form isn't invalid, log the errors and
 		else:
-			# Just log and return None if the form is invalid
 			logger.info('\tFORM INVALID')
 			logger.info('\t{}'.format(form.errors))
 
 		return ret
-
-class InvalidInput(Exception):
-	def __init__(self,message=None,field=None,value=None):
-		super().__init__(message)
-		self.field = field
-		self.value = value
-		self.message = message
-
-	def __str__(self):
-		return self.message
-
-class InvalidEpisode(InvalidInput):
-	def __init__(self,message=None,value=None):
-		super().__init__(field='episode',value=value,message=message)
-
-class InvalidSeason(InvalidInput):
-	def __init__(self,message=None,value=None):
-		super().__init__(field='season',value=value,message=message)
-
-class InvalidShowId(InvalidInput):
-	def __init__(self,message=None,value=None):
-		super().__init__(field='show_id',value=value,message=message)

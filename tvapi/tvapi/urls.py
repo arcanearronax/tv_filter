@@ -16,16 +16,20 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, re_path
 from django.conf import settings
+from django.conf.urls.static import static
 from .views import APIView
+import re
 
 urlpatterns = [
 	path('', APIView.as_view(), name='shows'),
-    path('failue/', APIView.as_view(), name='failure'),
+    #path('favicon.ico', )
     re_path(r'^(?P<search_id>tt[0-9]{4,8})$', APIView.as_view(), name="showSearch"),
     path('tv/', APIView.as_view(), name='showIndex'),
 	path('tv/<slug:show_id>/', APIView.as_view(), name='showView'),
 	path('tv/<slug:show_id>/season/<slug:season>/', APIView.as_view(), name='seasonView'),
 	path('tv/<slug:show_id>/season/<slug:season>/episode/<slug:episode>/', APIView.as_view(), name='episodeView'),
-    #path('test/', APIView.test_view, name='test'),
-    path('admin/', admin.site.urls),
 ]
+
+# What do we call when we have an error
+handler404 = APIView.get_404_page
+handler500 = APIView.get_500_page

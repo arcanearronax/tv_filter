@@ -23,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = os.environ.get('SKEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [os.environ.get('AHOST'),os.environ.get('BHOST')]
 
@@ -123,7 +123,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+#STATIC_ROOT = os.path.join(BASE_DIR, 'templates/static/')
+STATIC_ROOT = '/home/webmaster/sloth_proj/tvapi/templates/static'
 
 
 LOGGING = {
@@ -136,27 +137,44 @@ LOGGING = {
 		},
 	},
 	'handlers': {
-		'apilog': {
+		'apifile': {
 			'level': 'INFO',
 			'class': 'logging.FileHandler',
-			'filename': '/home/webmaster/sloth_proj/tvapi/logs/info.log',
+			'filename': '/home/webmaster/sloth_proj/tvapi/logs/scraper.log',
 			'formatter': 'simple',
 		},
-        'structlog': {
+        'modelfile': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
-            'filename': '/home/webmaster/sloth_proj/tvapi/logs/struct.log',
+            'filename': '/home/webmaster/sloth_proj/tvapi/logs/model.log',
             'formatter': 'simple',
-        }
+        },
+        'viewfile': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': '/home/webmaster/sloth_proj/tvapi/logs/view.log',
+            'formatter': 'simple',
+        },
+        'errorfile': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': '/home/webmaster/sloth_proj/tvapi/logs/error.log',
+            'formatter': 'simple',
+        },
 	},
 	'loggers': {
 		'apilog': {
-			'handlers': ['apilog'],
+			'handlers': ['apifile','errorfile'],
 			'level': 'INFO',
 			'propogate': True,
 		},
-        'structlog': {
-            'handlers': ['structlog'],
+        'modellog': {
+            'handlers': ['modelfile','errorfile'],
+            'level': 'INFO',
+            'propogate': True,
+        },
+        'viewlog': {
+            'handlers': ['viewfile'],
             'level': 'INFO',
             'propogate': True,
         },

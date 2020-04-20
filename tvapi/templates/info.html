@@ -63,37 +63,14 @@
 
 {% block warning_block %}
 
-	{% if match_error %}
-		<div class="warning w3-pale-red">
-			<p class="warning">{{ match_error }}</p>
-		</div>
-	{% elif warning %}
+	{% if match %}
 		<div class="warning w3-pale-yellow">
-			<p class="warning">{{ warning }}</p>
+			<p class="warning">Match Found</p>
 		</div>
-	{% elif message %}
+	{% else %}
 		<div class="warning w3-pale-blue">
-			<p class="warning">{{ message }}</p>
+			<p class="warning">No Match Found</p>
 		</div>
 	{% endif %}
 
-{% endblock %}
-
-{% block form_table %}
-<!-- This div contians the search form -->
-	<div class="w3-text-grey">
-		<form method="POST">
-			{% csrf_token %}
-			<table>
-				{% for field in form %}
-					<tr>
-						<td>{{ field.label_tag }} {{ field }}</td>
-					</tr>
-				{% empty %}
-					<p>none</p>
-				{% endfor %}
-			</table>
-			<input type="submit" class="w3-button w3-round-xlarge w3-light-grey form-spacing" value="Search" name="BaseForm" id="SubmitButton">
-		</form>
-	</div>
 {% endblock %}

@@ -11,6 +11,8 @@
 	<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
 	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Montserrat">
 	<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+	<!-- Using this to address issues with 500 errors from icon requests -->
+	<link rel="shortcut icon" href="{%  static 'favicon.ico' %}">
 
 
 	<style>
@@ -77,40 +79,45 @@
 
 		<div class="w3-container">
 
+			<!-- This is just the first line the visitor sees on the page -->
 			<h1>
-				{% if page_h1_link %}
-					<a href="{{ page_h1_link }}">{{ page_h1 }}</a>
+				{% if page_header %}
+					<!-- If the header should be a link, add the a tag -->
+					{% if page_header_link %}
+						<a href="{{ page_header_link }}">{{ page_header }}</a>
+					{% else %}
+						{{ page_header }}
+					{% endif %}
 				{% else %}
-					{{ page_h1 }}
+					TITLE_MISSING
 				{% endif %}
 			</h1>
-			<h3><a href="/tv">Go to Show Index</a></h3>
 
-			{% block season_info %}
+			<!-- If there's a sub-header, add it too -->
+			{% if sub_header_link %}
+				<h3>
+					<a href="{{ sub_header_link }}">{{ sub_header }}</a>
+				</h3>
+			{% else %}
+				<h3>
+					{{ sub_header }}
+				</h3>
+			{% endif %}
+
+			<!-- This is where information about the current item being looked at is displayed -->
+			{% block topic_info %}
 			{% endblock %}
 
-			{% block episode_info %}
-			{% endblock %}
-
-			{% block search_info %}
-			{% endblock %}
-
-			{% block show_listings %}
-			{% endblock %}
-
+			<!-- This is where any warnings are displayed -->
 			{% block warning_block %}
 			{% endblock %}
 
-			<div class="w3-text-grey">
-				<form method="POST">
-					{% csrf_token %}
-					<table>
-						{% block form_table %}
-						{% endblock %}
-					</table>
-					<input type="submit" class="w3-button w3-round-xlarge w3-light-grey form-spacing" value="Search" name="BaseForm" id="SubmitButton">
-				</form>
-			</div>
+			<!-- This is where a table containing data is displayed -->
+			{% block content_table %}
+			{% endblock %}
+
+			{% block form_table %}
+			{% endblock %}
 
 		</div>
 
