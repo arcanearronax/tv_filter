@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% load show_tags %}
+
+{% block content_table %}
+
+	<!-- This version is updated to utilize the class -->
+	{% if table_data %}
+		<table style="border: 1px solid white">
+
+			<!-- Get the table headers from our data -->
+			<tr style="border: 1px solid white">
+				{% for col in table_data.cols %}
+					<th class="ep-border ep-info">{{ col|title }}</th>
+				{% endfor %}
+			</tr>
+
+			<!-- Get the entries for our table from our data -->
+			{% for name in table_data.names %}
+				<tr class="ep-border">
+					<!--<td class="ep-border ep-info"><a href={{ table_data|get_id:name }}>{{ name }}</a></td>-->
+
+						<!-- Iterate over the datapoints we want to display for an obj -->
+						{% for col in table_data.cols %}
+
+							<!-- Need special handling for name -->
+							{% if col == 'name' %}
+								<td class="ep-border ep-info"><a href="{{ table_data|get_data_points:name|get_point_value:'link' }}">{{ name }}</a></td>
+							<!-- Need special handling for the match_found datapoint -->
+							{% elif col == 'match_found' %}
+								<td class="ep-border ep-info {{ table_data|get_data_points:name|get_point_value:col|match_found_processer }}">{{ table_data|get_data_points:name|get_point_value:col }}</td>
+							{% else %}
+								<td class="ep-border ep-info">{{ table_data|get_data_points:name|get_point_value:col }}</td>
+							{% endif %}
+
+						{% endfor %}
+
+				</tr>
+			{% endfor %}
+
+		</table>
+
+	{% endif %}
+
+{% endblock %}
+
+{% block warning_block %}
+
+	{% if match_error %}
+		<div class="warning w3-pale-red">
+			<p class="warning">{{ match_error }}</p>
+		</div>
+	{% elif warning %}
+		<div class="warning w3-pale-yellow">
+			<p class="warning">{{ warning }}</p>
+		</div>
+	{% elif message %}
+		<div class="warning w3-pale-blue">
+			<p class="warning">{{ message }}</p>
+		</div>
+	{% endif %}
+
+{% endblock %}
