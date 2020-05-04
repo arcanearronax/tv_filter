@@ -47,12 +47,14 @@ class APIService():
 			result_name = result_a.text
 
 			result_info = {}
-			result_info['imdb_id'] = re.search('tt[\d]{4,8}', result_a['href'])[0]
+			result_info['imdb_id'] = re.search('tt[\d]{4,8}', result_a['href']).group(0)
 			result_info['imdb_name'] = result_a.text
 			try:
-				result_info['year'] = int(re.search('\([\d]{4}\)', row.text)[0] \
+				result_info['year'] = int(re.search('\([\d]{4}\)', row.text).group(0) \
 				.replace('(','').replace(')','')) # Leaving this set to a default for now
 			except TypeError as t: # If we fail to find a regex match
+				result_info['year'] = None
+			except AttributeError as a: # Hot fix time
 				result_info['year'] = None
 
 			search_results.append(result_info)
@@ -93,7 +95,7 @@ class APIService():
 
 		# Find the year the show started airing
 		year_title = soup.find_all('a', {'title': 'See more release dates'})[0]
-		year = int(re.search('[\d]{4}', year_title.text)[0])
+		year = int(re.search('[\d]{4}', year_title.text).group(0))
 
 		return {
 			'imdb_id': imdb_id,

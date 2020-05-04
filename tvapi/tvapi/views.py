@@ -254,6 +254,7 @@ class APIView(View):
 		try:
 			# We should probably just grab the episode as a var
 			episode_id = Episode.get_episode_id(show_id=show_id,season=season,ep_num=episode)
+			context = {}
 
 		except EpisodeException as ee:
 			raise Http404('Failed to find episode: {}'.format(ee))
