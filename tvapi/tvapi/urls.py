@@ -28,7 +28,7 @@ urlpatterns = [
 	path('tv/<slug:show_id>/', APIView.as_view(), name='showView'),
 	path('tv/<slug:show_id>/season/<slug:season>/', APIView.as_view(), name='seasonView'),
 	path('tv/<slug:show_id>/season/<slug:season>/episode/<slug:episode>/', APIView.as_view(), name='episodeView'),
-]
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 # What do we call when we have an error
 handler404 = APIView.get_404_page
