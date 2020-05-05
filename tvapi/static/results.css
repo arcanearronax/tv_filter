@@ -1,0 +1,36 @@
+/*
+ *	These are used by tvapi results pages .
+ *
+*/
+
+/* This prevents underlined text from appearing for text in linked cells */
+.div_link:link, .div_link:hover, .div_link:visited, .div_link:active {
+  color: #FFFFFF;
+  text-decoration: none;
+  width: 100%;
+}
+
+.result-cell {
+  padding: 0.5em 2em;
+}
+
+/* This is used to ensure the full cell for a name is clickable */
+.result-name {
+  width: 100%;
+}
+
+/* This styles the borders of the cells in search results */
+.ep-border {
+	border: 1px solid white;
+}
+
+/* This is used to give some spacing to the cell contents
+.ep-info {
+	padding: 0.5em 2em;
+}*/
+
+/* This is used to keep consistent text formatting with the warning text */
+p.warning {
+	font-weight: bold;
+	font-size: 2em;
+}

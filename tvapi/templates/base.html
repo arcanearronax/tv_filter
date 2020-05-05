@@ -18,7 +18,9 @@
 		<!-- Using this to address issues with 500 errors from icon requests -->
 		<link rel="shortcut icon" href="{%  static 'favicon.ico' %}">
 		<link rel="stylesheet" type="text/css" href="https://arcanedomain.duckdns.org/WebpageStyle.css">
-		<link rel="stylesheet" type="text/css" href="{% static "tv_api.css" %}">
+		<link rel="stylesheet" type="text/css" href="{% static 'tvapi.css' %}">
+		{% block css_links %}
+		{% endblock %}
 
 		<style>
 			.w3-row-padding img {margin-bottom: 12px}
@@ -59,10 +61,12 @@
 				<h3>
 					<a href="{{ sub_header_link }}">{{ sub_header }}</a>
 				</h3>
-			{% else %}
+			{% elif sub_header %}
 				<h3>
 					{{ sub_header }}
 				</h3>
+			{% else %}
+
 			{% endif %}
 
 			<!-- This is where information about the current item being looked at is displayed -->

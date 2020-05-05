@@ -1,5 +1,11 @@
 {% extends 'base.html' %}
 {% load show_tags %}
+{% load static %}
+
+{% block css_links %}
+	{% static 'search.css' as css_link %}
+	<link rel="stylesheet" type="text/css" href="{{ css_link }}">
+{% endblock %}
 
 {% block topic_info %}
 	{% if season %}

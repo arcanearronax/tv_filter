@@ -1,0 +1,15 @@
+/*
+ *	These are used by the tvapi search page.
+ *
+*/
+
+/* This controls the appearance of the submit button */
+#SubmitButton1 {
+	margin-top: 20px;
+}
+
+/* This is used to give the search form a bit of spacing from other elements */
+.form-spacing {
+	margin-top: 1em;
+	margin-bottom: 1em;
+}

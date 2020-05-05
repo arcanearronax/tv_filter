@@ -1,5 +1,11 @@
 {% extends 'base.html' %}
 {% load show_tags %}
+{% load static %}
+
+{% block css_links %}
+	{% static 'results.css' as css_link %}
+	<link rel="stylesheet" type="text/css" href="{{ css_link }}">
+{% endblock %}
 
 {% block content_table %}
 
@@ -24,12 +30,34 @@
 
 							<!-- Need special handling for name -->
 							{% if col == 'name' %}
-								<td class="ep-border ep-info"><a href="{{ table_data|get_data_points:name|get_point_value:'link' }}">{{ name }}</a></td>
+								<!--<td class="ep-border ep-info"><a href="{{ table_data|get_data_points:name|get_point_value:'link' }}">{{ name }}</a></td>-->
+								<!--<td class="ep-border ep-info">
+								<form action="{{ table_data|get_data_points:name|get_point_value:'link' }}" method="get">
+									<button type="submit">
+										{{ name }}
+									</button>
+								</form>
+							</td>-->
+							<td class="ep-border ep-info">
+								<a class="div_link" href="{{ table_data|get_data_points:name|get_point_value:'link' }}">
+									<div class="result-name result-cell">
+										{{ name }}
+									</div>
+								</a>
+							</td>
 							<!-- Need special handling for the match_found datapoint -->
 							{% elif col == 'match_found' %}
-								<td class="ep-border ep-info {{ table_data|get_data_points:name|get_point_value:col|match_found_processer }}">{{ table_data|get_data_points:name|get_point_value:col }}</td>
+								<td class="ep-border ep-info {{ table_data|get_data_points:name|get_point_value:col|match_found_processer }}">
+									<div class="result-cell">
+										{{ table_data|get_data_points:name|get_point_value:col }}
+									</div>
+								</td>
 							{% else %}
-								<td class="ep-border ep-info">{{ table_data|get_data_points:name|get_point_value:col }}</td>
+								<td class="ep-border ep-info">
+									<div class="result-cell">
+										{{ table_data|get_data_points:name|get_point_value:col }}
+									</div>
+								</td>
 							{% endif %}
 
 						{% endfor %}
