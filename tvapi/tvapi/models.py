@@ -1,11 +1,11 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.db import DataError
-from .api_service import *
+from .site_scraper import *
 import logging
 
 logger = logging.getLogger('modellog')
-api_service = APIService
+site_scraper = SiteScraper
 
 class Show(models.Model):
     '''
@@ -71,7 +71,7 @@ class Show(models.Model):
 
         # If we don't find it, retrieve it from IMDB and create it
         except Exception as e:
-            show_imdb_info = api_service.get_show_imdb_info(imdb_id_search)
+            show_imdb_info = site_scraper.get_show_imdb_info(imdb_id_search)
 
             # NEED TO CONTINUE WORKING FROM HERE
             imdb_id = show_imdb_info['imdb_id']
@@ -112,7 +112,7 @@ class Episode(models.Model):
     show = models.ForeignKey(Show,on_delete=models.CASCADE)
     season = models.IntegerField()
 
-    api_service = APIService
+    site_scraper = SiteScraper
 
     @classmethod
     def get_episode_id(cls,show_id,season,ep_num):
@@ -142,7 +142,7 @@ class Episode(models.Model):
 
         show_search = Show.get_show_name(show_id)
         show_imdb_id = Show.objects.get(show_id=show_id).imdb_id
-        episodes = api_service.get_episodes_imdb_info(show_imdb_id,season)
+        episodes = site_scraper.get_episodes_imdb_info(show_imdb_id,season)
         logger.info('\tepisode count: {}'.format(len(episodes)))
 
         for ep in episodes:
@@ -186,7 +186,7 @@ class Episode(models.Model):
 
         # If we don't have episodes, retrieve them
         show_imdb_id = Show.objects.get(show_id=show_id).imdb_id
-        episodes = api_service.get_episodes_imdb_info(show_imdb_id,season)
+        episodes = site_scraper.get_episodes_imdb_info(show_imdb_id,season)
         logger.info('\tretrieved episodes: {}'.format(len(episodes)))
 
         for ep in episodes:
@@ -217,7 +217,7 @@ class Episode(models.Model):
             show = Show.objects.get(show_id=show_id)
             logger.info('\tfound imdb_id: {}'.format(show.imdb_id))
 
-            episodes = api_service.get_episodes_imdb_info(show.imdb_id,season)
+            episodes = site_scraper.get_episodes_imdb_info(show.imdb_id,season)
             logger.info('\tepisode count: {}'.format(len(episodes)))
 
             for ep in episodes:
@@ -321,7 +321,7 @@ class Cast(models.Model):
 
             try:
                 imdb_id = Episode.get_imdb_id_by_id(episode_id)
-                episode_obj = api_service.get_imdb_episode(imdb_id)
+                episode_obj = site_scraper.get_imdb_episode(imdb_id)
             except ElementNotFound as e:
                 raise CastException('Unable to retrieve episode cast')
 

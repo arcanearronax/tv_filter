@@ -22,7 +22,7 @@ def url_encode(value):
 
 logger = logging.getLogger('apilog')
 
-class APIService():
+class SiteScraper():
 
 	@classmethod
 	def get_imdb_title_search(cls,show_search):
@@ -30,6 +30,10 @@ class APIService():
 		This is used to request the show search page from IMDB website for a
 		given search. This will parse through the returned page and return an
 		array containing dictionaries with information about the matches found.
+
+		NOTE:
+		It's possible that multiple results have identical names. The names
+		should not be relied on to be unique.
 		'''
 		# Build the URL and get the IMDB page.
 		url = 'https://www.imdb.com/find?q={}&s=tt'.format(url_encode(show_search))
@@ -39,6 +43,7 @@ class APIService():
 		soup = BeautifulSoup(page.content,'html.parser')
 		search_rows = soup.find_all('td', {'class':'result_text'})
 		logger.info('Got search rows: {}'.format(len(search_rows)))
+		logger.info('URL --- {}'.format(url))
 
 		# Iterate over the rows with title information and build the array
 		search_results = []
@@ -49,6 +54,7 @@ class APIService():
 			result_info = {}
 			result_info['imdb_id'] = re.search('tt[\d]{4,8}', result_a['href']).group(0)
 			result_info['imdb_name'] = result_a.text
+			#logger.info('FOUD: {}'.format(result_info))
 			try:
 				result_info['year'] = int(re.search('\([\d]{4}\)', row.text).group(0) \
 				.replace('(','').replace(')','')) # Leaving this set to a default for now
@@ -56,11 +62,15 @@ class APIService():
 				result_info['year'] = None
 			except AttributeError as a: # Hot fix time
 				result_info['year'] = None
+			except Exception as e:
+				logger.info('EXCEPTION: {}'.format(e))
+				result_info['year'] = None
 
 			search_results.append(result_info)
 
 		logger.info('Returning rows: {}'.format(len(search_results)))
-		return search_results
+		logger.info('RESULTS: {}'.format(search_results[:10]))
+		return search_results[:10]
 
 	@classmethod
 	def get_show_imdb_info(cls, imdb_id):

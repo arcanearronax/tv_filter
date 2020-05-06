@@ -21,7 +21,7 @@
 			</tr>
 
 			<!-- Get the entries for our table from our data -->
-			{% for name in table_data.names %}
+			{% for num_key in table_data.names %}
 				<tr class="ep-border">
 					<!--<td class="ep-border ep-info"><a href={{ table_data|get_id:name }}>{{ name }}</a></td>-->
 
@@ -30,32 +30,24 @@
 
 							<!-- Need special handling for name -->
 							{% if col == 'name' %}
-								<!--<td class="ep-border ep-info"><a href="{{ table_data|get_data_points:name|get_point_value:'link' }}">{{ name }}</a></td>-->
-								<!--<td class="ep-border ep-info">
-								<form action="{{ table_data|get_data_points:name|get_point_value:'link' }}" method="get">
-									<button type="submit">
-										{{ name }}
-									</button>
-								</form>
-							</td>-->
 							<td class="ep-border ep-info">
-								<a class="div_link" href="{{ table_data|get_data_points:name|get_point_value:'link' }}">
+								<a class="div_link" href="{{ table_data|get_data_points:num_key|get_point_value:'link' }}">
 									<div class="result-name result-cell">
-										{{ name }}
+										{{ table_data|get_data_name:num_key }}
 									</div>
 								</a>
 							</td>
 							<!-- Need special handling for the match_found datapoint -->
 							{% elif col == 'match_found' %}
-								<td class="ep-border ep-info {{ table_data|get_data_points:name|get_point_value:col|match_found_processer }}">
+								<td class="ep-border ep-info {{ table_data|get_data_points:num_key|get_point_value:col|match_found_processer }}">
 									<div class="result-cell">
-										{{ table_data|get_data_points:name|get_point_value:col }}
+										{{ table_data|get_data_points:num_key|get_point_value:col }}
 									</div>
 								</td>
 							{% else %}
 								<td class="ep-border ep-info">
 									<div class="result-cell">
-										{{ table_data|get_data_points:name|get_point_value:col }}
+										{{ table_data|get_data_points:num_key|get_point_value:col }}
 									</div>
 								</td>
 							{% endif %}
