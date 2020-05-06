@@ -23,7 +23,7 @@
 			<!-- Get the entries for our table from our data -->
 			{% for num_key in table_data.names %}
 				<tr class="ep-border">
-					<!--<td class="ep-border ep-info"><a href={{ table_data|get_id:name }}>{{ name }}</a></td>-->
+
 
 						<!-- Iterate over the datapoints we want to display for an obj -->
 						{% for col in table_data.cols %}
@@ -31,7 +31,7 @@
 							<!-- Need special handling for name -->
 							{% if col == 'name' %}
 							<td class="ep-border ep-info">
-								<a class="div_link" href="{{ table_data|get_data_points:num_key|get_point_value:'link' }}">
+								<a class="div_link" href="{{ table_data|get_data_link:num_key }}">
 									<div class="result-name result-cell">
 										{{ table_data|get_data_name:num_key }}
 									</div>
@@ -39,15 +39,28 @@
 							</td>
 							<!-- Need special handling for the match_found datapoint -->
 							{% elif col == 'match_found' %}
-								<td class="ep-border ep-info {{ table_data|get_data_points:num_key|get_point_value:col|match_found_processer }}">
+								<td class="ep-border ep-info {{ table_data|get_match_found:num_key }}">
 									<div class="result-cell">
-										{{ table_data|get_data_points:num_key|get_point_value:col }}
+										{{ col }}
+									</div>
+								</td>
+
+							{% elif col == 'year' %}
+								<td class="ep-border ep-info">
+									<div class="result-cell">
+										{{ table_data|get_data_year:num_key }}
+									</div>
+								</td>
+							{% elif col == 'episode' %}
+								<td class="ep-border ep-info">
+									<div class="result-cell">
+										{{ table_data|get_data_episode:num_key }}
 									</div>
 								</td>
 							{% else %}
 								<td class="ep-border ep-info">
 									<div class="result-cell">
-										{{ table_data|get_data_points:num_key|get_point_value:col }}
+										UNKNOWN VALUE
 									</div>
 								</td>
 							{% endif %}

@@ -41,4 +41,22 @@ def get_col_name(table_data, num_key):
 
 @register.filter(name='get_data_name')
 def get_data_name(table_data, num_key):
-    return table_data.names[str(num_key)]
+    return table_data.get_name(str(num_key))
+
+@register.filter(name='get_data_link')
+def get_data_link(table_data, num_key):
+    return table_data.get_data_point(num_key, 'id')
+
+@register.filter(name='get_match_found')
+def get_match_found(table_data, num_key):
+    data_points = get_data_points(table_data, num_key)
+
+    return match_found_processer(get_point_value(data_points, 'match_found'))
+
+@register.filter(name='get_data_year')
+def get_data_year(table_data, num_key):
+    return table_data.get_data_point(num_key, 'year')
+
+@register.filter(name='get_data_episode')
+def get_data_episode(table_data, num_key):
+    return table_data.get_data_point(num_key, 'episode')
