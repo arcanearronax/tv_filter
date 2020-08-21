@@ -1,15 +1,17 @@
+# User generated files
 tvapi/tvapi/__pycache__/*
 tvapi/logs/*
 tvapi/tvapi/migrations
+
+# User maintained files
 tvapi/tvapi/*.sock
 tvapi/tvapi/wsgi.py
 tvapi/tvapi/redactions.py
 
+# Logs, cache, and backups
 *.log
 *.pyc
 *.bak
 
-bin
-include
-lib
-lib64
+# Virtual Environment
+venv

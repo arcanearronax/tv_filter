@@ -24,7 +24,7 @@ SECRET_KEY = os.environ.get('SKEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [os.environ.get('AHOST'),os.environ.get('BHOST')]
+ALLOWED_HOSTS = [os.environ.get('HostName')]
 
 
 # Application definition
@@ -136,25 +136,25 @@ LOGGING = {
 		'apifile': {
 			'level': 'INFO',
 			'class': 'logging.FileHandler',
-			'filename': '/home/webmaster/sloth_proj/tvapi/logs/scraper.log',
+			'filename': '/home/arronax/repositories/tv_filter/tvapi/logs/scraper.log',
 			'formatter': 'simple',
 		},
         'modelfile': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
-            'filename': '/home/webmaster/sloth_proj/tvapi/logs/model.log',
+            'filename': '/home/arronax/repositories/tv_filter/tvapi/logs/model.log',
             'formatter': 'simple',
         },
         'viewfile': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
-            'filename': '/home/webmaster/sloth_proj/tvapi/logs/view.log',
+            'filename': '/home/arronax/repositories/tv_filter/tvapi/logs/view.log',
             'formatter': 'simple',
         },
         'errorfile': {
             'level': 'ERROR',
             'class': 'logging.FileHandler',
-            'filename': '/home/webmaster/sloth_proj/tvapi/logs/error.log',
+            'filename': '/home/arronax/repositories/tv_filter/tvapi/logs/error.log',
             'formatter': 'simple',
         },
 	},
