@@ -1,4 +1,4 @@
 words = [
-    'Hamilton',
-    'hamilton',
+    "Hamilton",
+    "hamilton",
 ]

@@ -4,9 +4,11 @@ VENV_CONFIG_SCRIPT="./venv/bin/activate"
 # Need to check and see if these are already set, handle differently if true
 echo "" >> $VENV_CONFIG_SCRIPT
 echo "export SKEY='f6xa0$&!oi(r^7pi7dsku!u+8=%36y(byaiigbqt*maop1h%)j' # development secret key" >> $VENV_CONFIG_SCRIPT
-echo "export HostName='tvapi.arcanedomain.duckdns.org' # primary host" >> $VENV_CONFIG_SCRIPT
+echo "export HostName='localhost' # primary host" >> $VENV_CONFIG_SCRIPT
 echo "export UserName='password' # username for the database user" >> $VENV_CONFIG_SCRIPT
 echo "export UserPass='username' # username for the database user" >> $VENV_CONFIG_SCRIPT
+echo "export AppHome='./tvapi/' # username for the database user" >> $VENV_CONFIG_SCRIPT
+echo "export LogHome='./tvapi/logs/' # username for the database user" >> $VENV_CONFIG_SCRIPT
 
 # Need to bail out for now
 exit
