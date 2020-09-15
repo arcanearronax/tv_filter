@@ -1,4 +1,12 @@
+"""
+    tvapi.apps
+"""
+
 from django.apps import AppConfig
 
+
 class TVAPIConfig(AppConfig):
-	name = 'tvapi'
+    """
+    This represents the tvapi application and its configuration.
+    """
+    name = "tvapi"

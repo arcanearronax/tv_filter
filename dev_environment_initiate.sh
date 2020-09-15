@@ -6,9 +6,14 @@ VENV_CONFIG_SCRIPT="./venv/bin/activate"
 # Need to check and see if these are already set, handle differently if true
 echo "" >> $VENV_CONFIG_SCRIPT
 echo "export SKEY='f6xa0$&!oi(r^7pi7dsku!u+8=%36y(byaiigbqt*maop1h%)j' # development secret key" >> $VENV_CONFIG_SCRIPT
-echo "export HostName='tvapi.arcanedomain.duckdns.org' # primary host" >> $VENV_CONFIG_SCRIPT
-echo "export UserName='webmaster' # username for the database user" >> $VENV_CONFIG_SCRIPT
-echo "export UserPass='Dexter313!' # username for the database user" >> $VENV_CONFIG_SCRIPT
+echo "export HostName='localhost' # primary host" >> $VENV_CONFIG_SCRIPT
+echo "export UserName='password' # username for the database user" >> $VENV_CONFIG_SCRIPT
+echo "export UserPass='username' # username for the database user" >> $VENV_CONFIG_SCRIPT
+echo "export AppHome='./tvapi/' # username for the database user" >> $VENV_CONFIG_SCRIPT
+echo "export LogHome='./tvapi/logs/' # username for the database user" >> $VENV_CONFIG_SCRIPT
+
+# Need to bail out for now
+exit
 
 # Check if requirements are installed, with required versions
 #sudo dnf install python3-pip python3-dev postgresql-libs postgresql postgresql-contrib
@@ -24,8 +29,8 @@ sudo postgresql-setup initdb
 sudo systemctl enable --now postgresql
 SQL_SCRIPT="postgres_dev.sql"
 DATABASE_NAME="tvapi"
-PSQL_USER="webmaster"
-PSQL_PASS="Dexter313!"
+PSQL_USER="username"
+PSQL_PASS="password"
 echo "CREATE DATABASE $DATABASE_NAME;" > $SQL_SCRIPT
 echo "CREATE USER $PSQL_USER WITH PASSWORD '$PSQL_PASS';" >> $SQL_SCRIPT
 echo "ALTER ROLE $PSQL_USER SET client_encoding TO 'utf8';" >> $SQL_SCRIPT
