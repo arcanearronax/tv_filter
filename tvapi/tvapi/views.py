@@ -58,7 +58,7 @@ class BaseView(View):
     """
     def get(self, request, **kwargs):
         """
-		This is used to respond to process and respond to GET requests. It calls the get_home_context and get_page_context 
+		This is used to respond to process and respond to GET requests. It calls the get_home_context and get_page_context
 		"""
         logger.info("{} - {}".format(request.path_info, kwargs))
 
